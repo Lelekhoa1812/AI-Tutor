@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { OnboardingStepper } from "@/components/onboarding/OnboardingStepper"
+import { ClassroomStepper } from "@/components/onboarding/ClassroomStepper"
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Pencil } from 'lucide-react'
@@ -122,7 +122,7 @@ export default function OnboardingPage() {
               </Card>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
-              <OnboardingStepper />
+              <ClassroomStepper />
             </DialogContent>
           </Dialog>
         </div>
