@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { ClassroomStepper } from "@/components/onboarding/ClassroomStepper"
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Pencil } from 'lucide-react'
+import { Pencil, Check } from 'lucide-react'
+import { ClassroomModal } from '@/components/classroom/ClassroomModal'
 
 interface Classroom {
   id: string
@@ -23,6 +24,7 @@ export default function OnboardingPage() {
   const [editingClassroom, setEditingClassroom] = useState<string | null>(null)
   const [newName, setNewName] = useState('')
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [selectedClassroom, setSelectedClassroom] = useState<Classroom | null>(null)
 
   useEffect(() => {
     fetchClassrooms()
@@ -30,7 +32,8 @@ export default function OnboardingPage() {
 
   const fetchClassrooms = async () => {
     try {
-      const response = await fetch('/classrooms/list')
+      const response = await fetch('/api/classrooms')
+      if (!response.ok) throw new Error('Failed to fetch classrooms')
       const data = await response.json()
       setClassrooms(data)
     } catch (error) {
@@ -40,22 +43,28 @@ export default function OnboardingPage() {
     }
   }
 
-  const handleClassroomClick = (classroomId: string) => {
-    router.push(`/dashboard?classroomId=${classroomId}`)
+  const handleClassroomClick = (classroom: Classroom) => {
+    setSelectedClassroom(classroom)
   }
 
   const handleRename = async (classroomId: string) => {
     try {
-      await fetch(`/classrooms/${classroomId}`, {
+      const response = await fetch(`/api/classrooms/${classroomId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newName })
       })
+      if (!response.ok) throw new Error('Failed to rename classroom')
       setEditingClassroom(null)
       fetchClassrooms()
     } catch (error) {
       console.error('Error renaming classroom:', error)
     }
+  }
+
+  const handleDialogClose = () => {
+    setShowOnboarding(false)
+    fetchClassrooms() // Refresh the list when dialog is closed
   }
 
   if (isLoading) {
@@ -72,7 +81,7 @@ export default function OnboardingPage() {
             <Card 
               key={classroom.id}
               className="rounded-2xl p-4 shadow-md hover:shadow-lg transition cursor-pointer"
-              onClick={() => handleClassroomClick(classroom.id)}
+              onClick={() => handleClassroomClick(classroom)}
             >
               <CardHeader className="p-0">
                 <div className="flex items-start justify-between">
@@ -81,7 +90,6 @@ export default function OnboardingPage() {
                       <Input
                         value={newName}
                         onChange={(e) => setNewName(e.target.value)}
-                        onBlur={() => handleRename(classroom.id)}
                         onKeyDown={(e) => e.key === 'Enter' && handleRename(classroom.id)}
                         className="h-8"
                         autoFocus
@@ -96,11 +104,19 @@ export default function OnboardingPage() {
                     className="h-8 w-8"
                     onClick={(e) => {
                       e.stopPropagation()
-                      setEditingClassroom(classroom.id)
-                      setNewName(classroom.name)
+                      if (editingClassroom === classroom.id) {
+                        handleRename(classroom.id)
+                      } else {
+                        setEditingClassroom(classroom.id)
+                        setNewName(classroom.name)
+                      }
                     }}
                   >
-                    <Pencil className="h-4 w-4" />
+                    {editingClassroom === classroom.id ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Pencil className="h-4 w-4" />
+                    )}
                   </Button>
                 </div>
               </CardHeader>
@@ -112,7 +128,7 @@ export default function OnboardingPage() {
             </Card>
           ))}
 
-          <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
+          <Dialog open={showOnboarding} onOpenChange={handleDialogClose}>
             <DialogTrigger asChild>
               <Card className="rounded-2xl p-4 shadow-md hover:shadow-lg transition cursor-pointer border-dashed">
                 <CardContent className="flex flex-col items-center justify-center h-32">
@@ -127,6 +143,15 @@ export default function OnboardingPage() {
           </Dialog>
         </div>
       </div>
+
+      {selectedClassroom && (
+        <ClassroomModal
+          isOpen={!!selectedClassroom}
+          onClose={() => setSelectedClassroom(null)}
+          classroomId={selectedClassroom.id}
+          classroomName={selectedClassroom.name}
+        />
+      )}
     </div>
   )
 } 

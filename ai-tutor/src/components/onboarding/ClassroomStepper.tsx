@@ -100,6 +100,11 @@ export function ClassroomStepper() {
   }
 
   const onSubmit = async (data: ClassroomFormData) => {
+    if (currentStep < 3) {
+      setCurrentStep(currentStep + 1)
+      return
+    }
+
     setIsSubmitting(true)
     try {
       // Upload files if present
@@ -122,6 +127,10 @@ export function ClassroomStepper() {
       if (!response.ok) throw new Error('Failed to create classroom')
 
       const { classroomId } = await response.json()
+      toast({
+        title: 'Success',
+        description: 'Classroom created successfully!',
+      })
       router.push(`/dashboard?classroomId=${classroomId}`)
     } catch (error) {
       toast({
@@ -132,6 +141,10 @@ export function ClassroomStepper() {
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleNext = () => {
+    form.handleSubmit(onSubmit)()
   }
 
   return (
@@ -398,7 +411,7 @@ export function ClassroomStepper() {
           {currentStep < 3 ? (
             <Button
               type="button"
-              onClick={() => setCurrentStep(currentStep + 1)}
+              onClick={handleNext}
             >
               Next
             </Button>

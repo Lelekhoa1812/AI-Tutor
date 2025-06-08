@@ -62,10 +62,18 @@ model VerificationToken {
 }
 
 model Classroom {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  name        String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  userId      String   @db.ObjectId
-  user        User     @relation(fields: [userId], references: [id])
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  name             String
+  role             String   // Changed from enum to String to match the data
+  subject          String
+  gradeLevel       String
+  textbookUrl      String?
+  syllabusUrl      String?
+  studyPreferences Json
+  userId           String   @db.ObjectId
+  user             User     @relation(fields: [userId], references: [id])
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([userId])
 }
