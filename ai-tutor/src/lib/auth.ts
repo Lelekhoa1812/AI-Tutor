@@ -4,10 +4,7 @@ import { prisma } from './prisma'
 import GoogleProvider from 'next-auth/providers/google'
 import { cookies } from 'next/headers'
 import jwt from 'jsonwebtoken'
-import { PrismaClient } from '@prisma/client'
-import type { Account as NextAuthAccount } from 'next-auth'
-
-const prismaClient = new PrismaClient()
+import type { Prisma } from '@prisma/client'
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -21,7 +18,7 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt'
   },
   pages: {
-    signIn: '/login',
+    signIn: '/auth/login',
     error: '/auth/error',
   },
   callbacks: {
@@ -71,7 +68,8 @@ export const authOptions: NextAuthOptions = {
             
             // Check if the account is already linked
             const existingAccount = existingUser.accounts.find(
-              (acc: NextAuthAccount) => acc.provider === account.provider && acc.providerAccountId === account.providerAccountId
+              (acc: { provider: string; providerAccountId: string }) => 
+                acc.provider === account.provider && acc.providerAccountId === account.providerAccountId
             );
 
             if (!existingAccount) {
@@ -113,6 +111,13 @@ export const authOptions: NextAuthOptions = {
       }
       return token;
     },
+    async redirect({ url, baseUrl }) {
+      // Allows relative callback URLs
+      if (url.startsWith("/")) return `${baseUrl}${url}`
+      // Allows callback URLs on the same origin
+      else if (new URL(url).origin === baseUrl) return url
+      return baseUrl
+    },
   },
   debug: process.env.NODE_ENV === 'development',
   events: {
@@ -135,7 +140,7 @@ export async function getCurrentUser() {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key') as { userId: string }
 
-    const user = await prismaClient.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
       select: {
         id: true,

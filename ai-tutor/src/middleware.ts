@@ -5,7 +5,10 @@ export default withAuth(
   function middleware(req) {
     // If user is not authenticated and trying to access protected routes
     if (!req.nextauth.token) {
-      return NextResponse.redirect(new URL("/auth/login", req.url));
+      const url = new URL("/auth/login", req.url);
+      // Add the original URL as a callback parameter
+      url.searchParams.set("callbackUrl", req.nextUrl.pathname);
+      return NextResponse.redirect(url);
     }
   },
   {
@@ -25,7 +28,8 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - auth (authentication routes)
+     * - public (public assets)
      */
-    "/((?!api|_next/static|_next/image|favicon.ico|auth).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|auth|public).*)",
   ],
 }; 
