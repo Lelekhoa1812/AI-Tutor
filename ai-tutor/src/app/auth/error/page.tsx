@@ -39,7 +39,7 @@ export default function AuthErrorPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="min-h-screen flex items-center justify-center bg-gray-900">
       <div className="w-[400px] p-8 bg-white rounded-lg shadow-lg text-center">
         <h1 className="text-2xl font-bold text-red-600 mb-4">Authentication Error</h1>
         <p className="text-gray-600 mb-6">{getErrorMessage(error)}</p>
@@ -51,28 +51,5 @@ export default function AuthErrorPage() {
         </Link>
       </div>
     </div>
-  );
-} 
-            className="flex w-full justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-          >
-            Return to Login
-          </Link>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function ErrorPage() {
-  return (
-    <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-semibold text-gray-900">Loading...</h2>
-        </div>
-      </div>
-    }>
-      <ErrorContent />
-    </Suspense>
   );
 } 
