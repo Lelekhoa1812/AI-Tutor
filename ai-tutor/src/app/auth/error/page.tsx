@@ -1,10 +1,9 @@
 'use client';
 
-import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-function ErrorContent() {
+export default function AuthErrorPage() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
 
@@ -40,19 +39,20 @@ function ErrorContent() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center">
-      <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-6 shadow-lg">
-        <div className="text-center">
-          <h2 className="mt-6 text-3xl font-bold tracking-tight text-gray-900">
-            Authentication Error
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            {error || getErrorMessage(error)}
-          </p>
-        </div>
-        <div className="mt-8">
-          <Link
-            href="/auth/login"
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="w-[400px] p-8 bg-white rounded-lg shadow-lg text-center">
+        <h1 className="text-2xl font-bold text-red-600 mb-4">Authentication Error</h1>
+        <p className="text-gray-600 mb-6">{getErrorMessage(error)}</p>
+        <Link
+          href="/auth/login"
+          className="inline-block px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        >
+          Return to Login
+        </Link>
+      </div>
+    </div>
+  );
+} 
             className="flex w-full justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
           >
             Return to Login

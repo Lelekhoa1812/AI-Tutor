@@ -26,6 +26,7 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: '/auth/login',
+    signOut: '/auth/login',
     error: '/auth/error',
   },
   callbacks: {
@@ -133,6 +134,7 @@ export const authOptions: NextAuthOptions = {
     },
     async signOut(message: any) {
       console.log('SignOut Event:', message);
+      // Clear any custom cookies or session data here if needed
     },
   },
 }

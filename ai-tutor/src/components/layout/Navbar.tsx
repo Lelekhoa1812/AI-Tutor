@@ -10,6 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { signOut } from "next-auth/react";
 
 export function Navbar() {
   const pathname = usePathname();
@@ -18,6 +19,13 @@ export function Navbar() {
     { href: "/dashboard", label: "Dashboard" },
     { href: "/onboarding", label: "Onboarding" },
   ];
+
+  const handleLogout = async () => {
+    await signOut({ 
+      callbackUrl: '/auth/login',
+      redirect: true 
+    });
+  };
 
   return (
     <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -62,8 +70,8 @@ export function Navbar() {
             <DropdownMenuItem asChild>
               <Link href="/settings">Settings</Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/logout">Logout</Link>
+            <DropdownMenuItem onClick={handleLogout}>
+              Logout
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
