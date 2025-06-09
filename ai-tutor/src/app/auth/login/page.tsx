@@ -74,8 +74,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <div className="w-[400px] p-8 bg-white rounded-lg shadow-lg">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100/90 backdrop-blur-xl">
+      <div className="w-[400px] p-8 bg-white/95 rounded-lg shadow-lg backdrop-blur-sm relative z-10">
         <h2 className="text-2xl font-bold text-center text-gray-900 mb-8">
           LOG IN
         </h2>

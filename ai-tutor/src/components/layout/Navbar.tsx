@@ -10,10 +10,52 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
+import { useEffect, useState } from "react";
+
+interface ProfileData {
+  profileImage: string;
+  name: string;
+}
 
 export function Navbar() {
   const pathname = usePathname();
+  const { data: session, status } = useSession();
+  const [profile, setProfile] = useState<ProfileData>({
+    profileImage: "/images/profile/dog.png",
+    name: ""
+  });
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      fetchProfile();
+    }
+  }, [status]);
+
+  const fetchProfile = async () => {
+    try {
+      const response = await fetch("/api/profile");
+      if (!response.ok) {
+        throw new Error("Failed to fetch profile");
+      }
+      const data = await response.json();
+      setProfile(data);
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+    }
+  };
+
+  // Listen for profile updates
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      fetchProfile();
+    };
+
+    window.addEventListener("profileUpdated", handleProfileUpdate);
+    return () => {
+      window.removeEventListener("profileUpdated", handleProfileUpdate);
+    };
+  }, []);
 
   const navItems = [
     { href: "/dashboard", label: "Dashboard" },
@@ -58,8 +100,8 @@ export function Navbar() {
           <DropdownMenuTrigger asChild>
             <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
               <Avatar>
-                <AvatarImage src="/placeholder-avatar.jpg" alt="User" />
-                <AvatarFallback>U</AvatarFallback>
+                <AvatarImage src={profile.profileImage} alt={profile.name || "User"} />
+                <AvatarFallback>{profile.name?.[0]?.toUpperCase() || "U"}</AvatarFallback>
               </Avatar>
             </button>
           </DropdownMenuTrigger>
