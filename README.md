@@ -1,5 +1,7 @@
 **Overview**
 
+[Current Deployment Stage](https://ai-tutor-beta-topaz.vercel.app/) 
+
 Comprehensive design of an AI Tutoring Agent that differs from a generic LLM-based system by incorporating course-specific pedagogy, retrieval-augmented generation (RAG) with FAISS, and an end-to-end “classroom” pipeline (including planning, learning, and assessment). The design is broken into four main sections:
 
 1. **Proposed Tech Stack**

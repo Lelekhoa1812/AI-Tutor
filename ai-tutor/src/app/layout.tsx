@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/toaster";
+import { Navbar } from "@/components/layout/Navbar";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 import "./globals.css";
-import { Providers } from "@/components/providers/Providers";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -16,9 +19,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <Providers>{children}</Providers>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            <div className="min-h-screen bg-background">
+              <Navbar />
+              {children}
+            </div>
+            <Toaster />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
