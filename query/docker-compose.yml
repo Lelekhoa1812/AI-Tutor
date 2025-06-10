@@ -1,0 +1,28 @@
+# docker-compose.yml
+version: '3.9'
+services:
+  fastapi:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - GOOGLE_BOOKS_KEY=${GOOGLE_BOOKS_KEY}
+      - MONGODB_URI=${MONGODB_URI}
+    depends_on:
+      - mongodb
+      - redis
+      - worker
+  mongodb:
+    image: mongo:6
+    volumes:
+      - mongo-data:/data/db
+  # redis:
+  #   image: redis:7
+  worker:
+    build: .
+    command: celery -A celery_app worker -Q doc_ingest --loglevel=info
+    depends_on:
+      - redis
+      - mongodb
+volumes:
+  mongo-data:
