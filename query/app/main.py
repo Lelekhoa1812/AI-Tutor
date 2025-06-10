@@ -4,7 +4,7 @@
 # │   ├── db.py
 # │   ├── routers/
 # │   │   ├── search.py
-# │   │   └── import.py
+# │   │   └── import_doc.py
 # │   └── services/
 # │       ├── google_books.py
 # │       ├── open_library.py
@@ -16,7 +16,6 @@
 
 # app/main.py
 from fastapi import FastAPI, WebSocket
-from fastapi.routing import WebSocketRoute
 from app.routers import search, import_doc
 
 app = FastAPI()

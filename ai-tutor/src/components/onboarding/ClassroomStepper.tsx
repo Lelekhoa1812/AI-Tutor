@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -13,6 +13,15 @@ import { Switch } from '@/components/ui/switch'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { useToast } from '@/hooks/use-toast'
 import { cn } from '@/lib/utils'
+import { Loader2, Search, Upload } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+
+interface Candidate {
+  id: string
+  title: string
+  description: string
+  status: 'DOWNLOADING' | 'INDEXING' | 'READY'
+}
 
 // Form Schema
 const classroomSchema = z.object({
@@ -20,8 +29,16 @@ const classroomSchema = z.object({
   role: z.enum(['tutor', 'student']),
   subject: z.string().min(1, 'Please select a subject'),
   gradeLevel: z.string().min(1, 'Please select a grade level'),
-  textbook: z.instanceof(File).optional(),
-  syllabus: z.instanceof(File).optional(),
+  textbook: z.object({
+    source: z.enum(['upload', 'online']),
+    documentId: z.string().optional(),
+    file: z.any().optional()
+  }).optional().nullable(),
+  syllabus: z.object({
+    source: z.enum(['upload', 'online']),
+    documentId: z.string().optional(),
+    file: z.any().optional()
+  }).optional().nullable(),
   studyPreferences: z.object({
     daysPerWeek: z.number().min(1).max(7),
     hoursPerSession: z.number().min(0.5).max(4),
@@ -61,11 +78,22 @@ export function ClassroomStepper() {
   const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [isSearching, setIsSearching] = useState(false)
+  const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
+  const [importStatus, setImportStatus] = useState<'idle' | 'importing' | 'complete'>('idle')
+  const [wsConnection, setWsConnection] = useState<WebSocket | null>(null)
 
   const form = useForm<ClassroomFormData>({
     resolver: zodResolver(classroomSchema),
     defaultValues: {
+      name: '',
       role: 'student',
+      subject: '',
+      gradeLevel: '',
+      textbook: null,
+      syllabus: null,
       studyPreferences: {
         daysPerWeek: 3,
         hoursPerSession: 1,
@@ -74,7 +102,108 @@ export function ClassroomStepper() {
     }
   })
 
-  const handleFileUpload = async (file: File, type: 'textbook' | 'syllabus') => {
+  const validateCurrentStep = async () => {
+    const currentValues = form.getValues()
+    
+    switch (currentStep) {
+      case 1:
+        // Validate only name, role, subject, and gradeLevel
+        return form.trigger(['name', 'role', 'subject', 'gradeLevel'])
+      case 2:
+        // No validation needed for step 2 as files are optional
+        return true
+      case 3:
+        // Validate study preferences
+        return form.trigger(['studyPreferences.daysPerWeek', 'studyPreferences.hoursPerSession', 'studyPreferences.learningStyle'])
+      default:
+        return false
+    }
+  }
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) return
+
+    setIsSearching(true)
+    try {
+      const response = await fetch(`https://binkhoale1812-querysearcher.hf.space/search?q=${encodeURIComponent(searchQuery)}`)
+      if (!response.ok) throw new Error('Search failed')
+      const data = await response.json()
+      setCandidates(data)
+    } catch (error) {
+      toast({
+        title: 'Search Failed',
+        description: 'Failed to search for documents. Please try again.',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsSearching(false)
+    }
+  }
+
+  const handleImport = async (candidate: Candidate) => {
+    setSelectedCandidate(candidate)
+    setImportStatus('importing')
+
+    try {
+      const response = await fetch('https://binkhoale1812-querysearcher.hf.space/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ document_id: candidate.id })
+      })
+
+      if (!response.ok) throw new Error('Import failed')
+      const { document_id } = await response.json()
+
+      // Connect to WebSocket for progress updates
+      const ws = new WebSocket(`wss://binkhoale1812-querysearcher.hf.space/ws/documents/${document_id}`)
+      setWsConnection(ws)
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data)
+        if (data.status === 'READY') {
+          setImportStatus('complete')
+          ws.close()
+          setWsConnection(null)
+          
+          // Update form with the imported document
+          form.setValue('textbook', {
+            source: 'online',
+            documentId: document_id
+          })
+        }
+      }
+
+      ws.onerror = () => {
+        toast({
+          title: 'Import Failed',
+          description: 'Failed to import document. Please try again.',
+          variant: 'destructive'
+        })
+        setImportStatus('idle')
+        ws.close()
+        setWsConnection(null)
+      }
+    } catch (error) {
+      toast({
+        title: 'Import Failed',
+        description: 'Failed to import document. Please try again.',
+        variant: 'destructive'
+      })
+      setImportStatus('idle')
+    }
+  }
+
+  // Cleanup WebSocket connection on unmount
+  useEffect(() => {
+    return () => {
+      if (wsConnection) {
+        wsConnection.close()
+      }
+    }
+  }, [wsConnection])
+
+  const handleFileUpload = async (file: File | undefined, type: 'textbook' | 'syllabus') => {
+    if (!file) return null
     try {
       const formData = new FormData()
       formData.append('file', file)
@@ -109,8 +238,8 @@ export function ClassroomStepper() {
     try {
       // Upload files if present
       const [textbookUrl, syllabusUrl] = await Promise.all([
-        data.textbook ? handleFileUpload(data.textbook, 'textbook') : null,
-        data.syllabus ? handleFileUpload(data.syllabus, 'syllabus') : null
+        data.textbook?.file ? handleFileUpload(data.textbook.file, 'textbook') : null,
+        data.syllabus?.file ? handleFileUpload(data.syllabus.file, 'syllabus') : null
       ])
 
       // Create classroom
@@ -119,8 +248,8 @@ export function ClassroomStepper() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...data,
-          textbookUrl,
-          syllabusUrl
+          textbookUrl: data.textbook?.source === 'online' ? data.textbook.documentId : textbookUrl,
+          syllabusUrl: data.syllabus?.source === 'online' ? data.syllabus.documentId : syllabusUrl
         })
       })
 
@@ -143,8 +272,12 @@ export function ClassroomStepper() {
     }
   }
 
-  const handleNext = () => {
-    form.handleSubmit(onSubmit)()
+  // Update the handleNext function
+  const handleNext = async () => {
+    const isValid = await validateCurrentStep()
+    if (isValid) {
+      setCurrentStep(currentStep + 1)
+    }
   }
 
   return (
@@ -288,45 +421,193 @@ export function ClassroomStepper() {
             )}
 
             {currentStep === 2 && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="textbook"
-                  render={({ field: { value, onChange, ...field } }) => (
-                    <FormItem>
-                      <FormLabel>Primary Textbook (Optional)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="file"
-                          accept=".pdf"
-                          onChange={(e) => onChange(e.target.files?.[0])}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Primary Textbook</h3>
+                  
+                  {/* File Upload Section */}
+                  <Card>
+                    <CardContent className="pt-6">
+                      <FormField
+                        control={form.control}
+                        name="textbook.file"
+                        render={({ field: { value, onChange, ...field } }) => (
+                          <FormItem>
+                            <FormLabel>Upload Local PDF</FormLabel>
+                            <FormControl>
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="file"
+                                  accept=".pdf"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0]
+                                    if (file) {
+                                      onChange(file)
+                                      form.setValue('textbook', {
+                                        source: 'upload',
+                                        file
+                                      })
+                                    }
+                                  }}
+                                  {...field}
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => {
+                                    const input = document.createElement('input')
+                                    input.type = 'file'
+                                    input.accept = '.pdf'
+                                    input.onchange = (e) => {
+                                      const file = (e.target as HTMLInputElement).files?.[0]
+                                      if (file) {
+                                        onChange(file)
+                                        form.setValue('textbook', {
+                                          source: 'upload',
+                                          file
+                                        })
+                                      }
+                                    }
+                                    input.click()
+                                  }}
+                                >
+                                  <Upload className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </CardContent>
+                  </Card>
 
-                <FormField
-                  control={form.control}
-                  name="syllabus"
-                  render={({ field: { value, onChange, ...field } }) => (
-                    <FormItem>
-                      <FormLabel>Syllabus (Optional)</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="file"
-                          accept=".pdf"
-                          onChange={(e) => onChange(e.target.files?.[0])}
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
+                  {/* Online Search Section */}
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="space-y-4">
+                        <FormLabel>Search Online</FormLabel>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            placeholder="Search for textbooks (e.g., 'Calculus Stewart 8th')"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                          />
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={handleSearch}
+                            disabled={isSearching || !searchQuery.trim()}
+                          >
+                            {isSearching ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Search className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+
+                        {candidates.length > 0 && (
+                          <div className="space-y-2">
+                            {candidates.map((candidate) => (
+                              <Card key={candidate.id}>
+                                <CardContent className="p-4">
+                                  <div className="flex items-start justify-between">
+                                    <div>
+                                      <h4 className="font-medium">{candidate.title}</h4>
+                                      <p className="text-sm text-muted-foreground">
+                                        {candidate.description}
+                                      </p>
+                                    </div>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleImport(candidate)}
+                                      disabled={importStatus === 'importing' || selectedCandidate?.id === candidate.id}
+                                    >
+                                      {selectedCandidate?.id === candidate.id ? (
+                                        importStatus === 'importing' ? (
+                                          <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Importing...
+                                          </>
+                                        ) : importStatus === 'complete' ? (
+                                          'Imported'
+                                        ) : (
+                                          'Import'
+                                        )
+                                      ) : (
+                                        'Import'
+                                      )}
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Syllabus Section */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Syllabus</h3>
+                  <FormField
+                    control={form.control}
+                    name="syllabus.file"
+                    render={({ field: { value, onChange, ...field } }) => (
+                      <FormItem>
+                        <FormLabel>Upload Syllabus (Optional)</FormLabel>
+                        <FormControl>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="file"
+                              accept=".pdf"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0]
+                                if (file) {
+                                  onChange(file)
+                                  form.setValue('syllabus', {
+                                    source: 'upload',
+                                    file
+                                  })
+                                }
+                              }}
+                              {...field}
+                            />
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              onClick={() => {
+                                const input = document.createElement('input')
+                                input.type = 'file'
+                                input.accept = '.pdf'
+                                input.onchange = (e) => {
+                                  const file = (e.target as HTMLInputElement).files?.[0]
+                                  if (file) {
+                                    onChange(file)
+                                    form.setValue('syllabus', {
+                                      source: 'upload',
+                                      file
+                                    })
+                                  }
+                                }
+                                input.click()
+                              }}
+                            >
+                              <Upload className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
             )}
 
             {currentStep === 3 && (

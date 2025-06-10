@@ -128,15 +128,17 @@ export default function OnboardingPage() {
             </Card>
           ))}
 
-          <Dialog open={showOnboarding} onOpenChange={handleDialogClose}>
-            <DialogTrigger asChild>
-              <Card className="rounded-2xl p-4 shadow-md hover:shadow-lg transition cursor-pointer border-dashed">
-                <CardContent className="flex flex-col items-center justify-center h-32">
-                  <div className="text-2xl mb-2">+</div>
-                  <p className="text-lg font-medium">New Classroom</p>
-                </CardContent>
-              </Card>
-            </DialogTrigger>
+          <Card 
+            className="rounded-2xl p-4 shadow-md hover:shadow-lg transition cursor-pointer border-dashed"
+            onClick={() => setShowOnboarding(true)}
+          >
+            <CardContent className="flex flex-col items-center justify-center h-32">
+              <div className="text-2xl mb-2">+</div>
+              <p className="text-lg font-medium">New Classroom</p>
+            </CardContent>
+          </Card>
+
+          <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
             <DialogContent className="max-w-2xl">
               <ClassroomStepper />
             </DialogContent>

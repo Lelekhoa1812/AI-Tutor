@@ -1,10 +1,9 @@
-
 # app/db.py
-import motor.motor_asyncio
-from gridfs import GridFSBucket
+from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorGridFSBucket
 import os
 
 MONGO_URI = os.getenv("MONGODB_URI")
-client = motor.motor_asyncio.AsyncIOMotorClient(MONGO_URI)
-db = client.get_default_database()
-grid_fs_bucket = GridFSBucket(db)
+client = AsyncIOMotorClient(MONGO_URI)
+MONGO_DB_NAME = os.getenv("MONGODB_DB", "querysearcher") # fallback default
+db = client[MONGO_DB_NAME]
+grid_fs_bucket = AsyncIOMotorGridFSBucket(db)
