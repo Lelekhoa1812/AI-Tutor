@@ -165,7 +165,7 @@ export function Profile() {
           {error}
         </div>
       )}
-      <div className="bg-white rounded-lg shadow-lg p-6">
+      <div className="rounded-lg shadow-lg p-6">
         {/* Profile Image Section */}
         <div className="relative w-32 h-32 mx-auto mb-6 group">
           <Image
@@ -187,7 +187,7 @@ export function Profile() {
         {/* Profile Form */}
         <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
           <div>
-            <label className="block text-sm font-medium text-gray-700">Name</label>
+            <label className="block text-sm font-medium">Name</label>
             <input
               type="text"
               value={profile.name}
@@ -198,7 +198,7 @@ export function Profile() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Grade Level</label>
+            <label className="block text-sm font-medium">Grade Level</label>
             <select
               value={profile.gradeLevel}
               onChange={(e) => setProfile(prev => ({ ...prev, gradeLevel: e.target.value }))}
@@ -215,7 +215,7 @@ export function Profile() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Learning Style</label>
+            <label className="block text-sm font-medium">Learning Style</label>
             <select
               value={profile.learningStyle}
               onChange={(e) => setProfile(prev => ({ ...prev, learningStyle: e.target.value }))}

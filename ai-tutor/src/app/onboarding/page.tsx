@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ClassroomStepper } from "@/components/onboarding/ClassroomStepper"
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { Pencil, Check } from 'lucide-react'
+import { Pencil, Check, Trash2 } from 'lucide-react'
 import { ClassroomModal } from '@/components/classroom/ClassroomModal'
 
 interface Classroom {
@@ -22,6 +22,7 @@ export default function OnboardingPage() {
   const [classrooms, setClassrooms] = useState<Classroom[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [editingClassroom, setEditingClassroom] = useState<string | null>(null)
+  const [classroomToDelete, setClassroomToDelete] = useState<Classroom | null>(null)
   const [newName, setNewName] = useState('')
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [selectedClassroom, setSelectedClassroom] = useState<Classroom | null>(null)
@@ -30,6 +31,7 @@ export default function OnboardingPage() {
     fetchClassrooms()
   }, [])
 
+  // Fetch classrooms from db with content
   const fetchClassrooms = async () => {
     try {
       const response = await fetch('/api/classrooms')
@@ -46,7 +48,8 @@ export default function OnboardingPage() {
   const handleClassroomClick = (classroom: Classroom) => {
     setSelectedClassroom(classroom)
   }
-
+  
+  // Rename Classroom
   const handleRename = async (classroomId: string) => {
     try {
       const response = await fetch(`/api/classrooms/${classroomId}`, {
@@ -61,6 +64,20 @@ export default function OnboardingPage() {
       console.error('Error renaming classroom:', error)
     }
   }
+
+  // Delete Classroom
+  const handleDelete = async (classroomId: string) => {
+    try {
+      const response = await fetch(`/api/classrooms/${classroomId}`, {
+        method: 'DELETE'
+      })
+      if (!response.ok) throw new Error('Failed to delete classroom')
+      await fetchClassrooms() // Refresh UI
+    } catch (error) {
+      console.error('Error deleting classroom:', error)
+    }
+  }
+  
 
   const handleDialogClose = () => {
     setShowOnboarding(false)
@@ -84,8 +101,9 @@ export default function OnboardingPage() {
               onClick={() => handleClassroomClick(classroom)}
             >
               <CardHeader className="p-0">
-                <div className="flex items-start justify-between">
-                  <CardTitle className="text-xl">
+                <div className="flex items-start justify-between w-full">
+                  {/* Classroom Name */}
+                  <CardTitle className="flex-1">
                     {editingClassroom === classroom.id ? (
                       <Input
                         value={newName}
@@ -98,26 +116,42 @@ export default function OnboardingPage() {
                       classroom.name
                     )}
                   </CardTitle>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (editingClassroom === classroom.id) {
-                        handleRename(classroom.id)
-                      } else {
-                        setEditingClassroom(classroom.id)
-                        setNewName(classroom.name)
-                      }
-                    }}
-                  >
-                    {editingClassroom === classroom.id ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <Pencil className="h-4 w-4" />
-                    )}
-                  </Button>
+                  {/* Button group */}
+                  <div className="flex items-center space-x-1">
+                      {/* Rename Classroom */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (editingClassroom === classroom.id) {
+                            handleRename(classroom.id)
+                          } else {
+                            setEditingClassroom(classroom.id)
+                            setNewName(classroom.name)
+                          }
+                        }}
+                      >
+                        {editingClassroom === classroom.id ? (
+                          <Check className="h-4 w-4" />
+                        ) : (
+                          <Pencil className="h-4 w-4" />
+                        )}
+                      </Button>
+                      {/* Delete Classroom */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 ml-1"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setClassroomToDelete(classroom)
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                 </div>
               </CardHeader>
               <CardContent className="p-0 mt-2">
@@ -137,10 +171,30 @@ export default function OnboardingPage() {
               <p className="text-lg font-medium">New Classroom</p>
             </CardContent>
           </Card>
-
+          {/* Classroom Stepper Dialog */}
           <Dialog open={showOnboarding} onOpenChange={setShowOnboarding}>
             <DialogContent className="max-w-2xl">
               <ClassroomStepper />
+            </DialogContent>
+          </Dialog>
+          {/* Delete Classroom Dialog */}
+          <Dialog open={!!classroomToDelete} onOpenChange={() => setClassroomToDelete(null)}>
+            <DialogContent>
+              <h2 className="text-lg font-semibold">Delete Classroom</h2>
+              <p>Are you sure you want to delete <strong>{classroomToDelete?.name}</strong>? This action cannot be undone.</p>
+              <div className="mt-4 flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setClassroomToDelete(null)}>Cancel</Button>
+                <Button
+                  variant="destructive"
+                  onClick={async () => {
+                    if (!classroomToDelete) return
+                    await handleDelete(classroomToDelete.id)
+                    setClassroomToDelete(null)
+                  }}
+                >
+                  Delete
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
         </div>
