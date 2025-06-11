@@ -6,6 +6,7 @@ from app.services import google_books, open_library, internet_archive
 from app.services.ingest import parse_and_index
 import aiofiles, uuid, os
 import asyncio
+import httpx
 
 router = APIRouter()
 
@@ -26,9 +27,17 @@ async def import_book(req: ImportRequest):
         raise HTTPException(400, "Invalid source")
 
     result = await source_lookup[req.source](req.ref)
-    if not result or not result.get("download_available"):
+    print(f"[DEBUG] Import source result: {result}")  # We need to debug out the result from Google API
+    
+    # Debugs
+    if not result:
+        print("[INFO] No download result returned from fetch().")
+        raise HTTPException(403, "Download not permitted")
+    if not result.get("download_url"):
+        print(f"[INFO] No download URL. Viewability: {result.get('viewability', 'N/A')}")
         raise HTTPException(403, "Download not permitted")
 
+    # Write temp file and save as Pdf from downloadable link
     download_url = result["download_url"]
     file_path = f"/tmp/{req.candidate_id}.pdf"
 

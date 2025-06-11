@@ -267,7 +267,7 @@ export function Profile() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div 
             ref={modalRef}
-            className="bg-white rounded-lg p-6 max-w-2xl w-full"
+            className="rounded-lg p-6 max-w-2xl w-full"
             onTouchStart={onTouchStart}
             onTouchMove={onTouchMove}
             onTouchEnd={onTouchEnd}
@@ -285,14 +285,14 @@ export function Profile() {
               <button
                 onClick={() => setCurrentImageIndex(prev => Math.max(0, prev - 5))}
                 disabled={currentImageIndex === 0}
-                className="px-3 py-1 bg-gray-200 rounded-md disabled:opacity-50"
+                className="px-3 py-1 bg-secondary rounded-md disabled:opacity-50"
               >
                 Previous
               </button>
               <button
                 onClick={() => setCurrentImageIndex(prev => Math.min(profileImages.length - 5, prev + 5))}
                 disabled={currentImageIndex >= profileImages.length - 5}
-                className="px-3 py-1 bg-gray-200 rounded-md disabled:opacity-50"
+                className="px-3 py-1 bg-secondary rounded-md disabled:opacity-50"
               >
                 Next
               </button>

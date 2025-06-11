@@ -16,11 +16,16 @@ import { cn } from '@/lib/utils'
 import { Loader2, Search, Upload } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 
+// Candidate type (nearest match book)
 interface Candidate {
-  id: string
+  candidate_id: string
   title: string
-  description: string
-  status: 'DOWNLOADING' | 'INDEXING' | 'READY'
+  description?: string
+  author?: string
+  year?: number
+  source: 'google' | 'openlibrary' | 'ia'
+  ref: Record<string, any>
+  previewUrl?: string
 }
 
 // Form Schema
@@ -82,6 +87,7 @@ export function ClassroomStepper() {
   const [isSearching, setIsSearching] = useState(false)
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
+  const [previewOnlyCandidates, setPreviewOnlyCandidates] = useState<Record<string, string>>({})
   const [importStatus, setImportStatus] = useState<'idle' | 'importing' | 'complete'>('idle')
   const [wsConnection, setWsConnection] = useState<WebSocket | null>(null)
 
@@ -102,6 +108,7 @@ export function ClassroomStepper() {
     }
   })
 
+  // Enum steps
   const validateCurrentStep = async () => {
     const currentValues = form.getValues()
     
@@ -120,15 +127,35 @@ export function ClassroomStepper() {
     }
   }
 
+  // Trim and send query searching closest match
   const handleSearch = async () => {
     if (!searchQuery.trim()) return
-
+    // On searching session, await endpoint
     setIsSearching(true)
     try {
       const response = await fetch(`https://binkhoale1812-querysearcher.hf.space/search?q=${encodeURIComponent(searchQuery)}`)
       if (!response.ok) throw new Error('Search failed')
       const data = await response.json()
-      setCandidates(data)
+      // Map data to Candidate type
+      setCandidates(
+        data.map((item: Candidate) => ({
+          candidate_id: item.candidate_id,
+          title: item.title,
+          author: item.author,
+          year: item.year,
+          description: `${item.author || ''} (${item.year || 'n/a'})`,
+          source: item.source,
+          ref: item.ref
+        }))
+      )   
+      // Set preview links for candidates that are not downloadable
+      const previewLinks = data.reduce((acc: Record<string, string>, item: any) => {
+        if (!item.download_available && item.web_reader_url) {
+          acc[item.candidate_id] = item.web_reader_url
+        }
+        return acc
+      }, {})
+      setPreviewOnlyCandidates(previewLinks)      
     } catch (error) {
       toast({
         title: 'Search Failed',
@@ -148,8 +175,33 @@ export function ClassroomStepper() {
       const response = await fetch('https://binkhoale1812-querysearcher.hf.space/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ document_id: candidate.id })
+        body: JSON.stringify({
+          candidate_id: candidate.candidate_id,
+          title: candidate.title,
+          source: candidate.source,
+          ref: candidate.ref
+        })
       })
+
+      if (response.status === 403) {
+        // Preview fallback
+        const body = await response.json()
+        const webPreview = body?.previewUrl ?? candidate.ref?.webReaderLink ?? candidate.ref?.url
+        // Switch to preview mode (download not permitted)
+        if (webPreview) {
+          toast({
+            title: 'Preview Only',
+            description: 'This book is not available for download, but can be previewed online.',
+          })
+          setPreviewOnlyCandidates((prev) => ({
+            ...prev,
+            [candidate.candidate_id]: webPreview
+          }))
+          return
+        }
+        // If no preview available, throw error
+        throw new Error('Download not permitted and no preview available')
+      }
 
       if (!response.ok) throw new Error('Import failed')
       const { document_id } = await response.json()
@@ -157,14 +209,13 @@ export function ClassroomStepper() {
       // Connect to WebSocket for progress updates
       const ws = new WebSocket(`wss://binkhoale1812-querysearcher.hf.space/ws/documents/${document_id}`)
       setWsConnection(ws)
-
+      // On state change, update form with the imported document
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data)
         if (data.status === 'READY') {
           setImportStatus('complete')
           ws.close()
           setWsConnection(null)
-          
           // Update form with the imported document
           form.setValue('textbook', {
             source: 'online',
@@ -172,7 +223,7 @@ export function ClassroomStepper() {
           })
         }
       }
-
+      // Failed at import stage (likely embeedding)
       ws.onerror = () => {
         toast({
           title: 'Import Failed',
@@ -507,40 +558,50 @@ export function ClassroomStepper() {
                             )}
                           </Button>
                         </div>
-
+                        {/* Search Results wrapped in scrollable div */}
                         {candidates.length > 0 && (
-                          <div className="space-y-2">
+                          <div className="space-y-2 max-h-64 overflow-y-auto border rounded-md p-2">
                             {candidates.map((candidate) => (
-                              <Card key={candidate.id}>
+                              <Card key={candidate.candidate_id}>
                                 <CardContent className="p-4">
                                   <div className="flex items-start justify-between">
                                     <div>
-                                      <h4 className="font-medium">{candidate.title}</h4>
-                                      <p className="text-sm text-muted-foreground">
-                                        {candidate.description}
-                                      </p>
+                                    <h4 className="font-medium">{candidate.title}</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                      {candidate.author} • {candidate.year} • Source: {candidate.source}
+                                    </p>
                                     </div>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleImport(candidate)}
-                                      disabled={importStatus === 'importing' || selectedCandidate?.id === candidate.id}
-                                    >
-                                      {selectedCandidate?.id === candidate.id ? (
-                                        importStatus === 'importing' ? (
-                                          <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Importing...
-                                          </>
-                                        ) : importStatus === 'complete' ? (
-                                          'Imported'
+                                    {previewOnlyCandidates[candidate.candidate_id] ? (
+                                      <Button
+                                        variant="link"
+                                        className="text-blue-600"
+                                        onClick={() => window.open(previewOnlyCandidates[candidate.candidate_id], '_blank')}
+                                      >
+                                        Preview
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => handleImport(candidate)}
+                                        disabled={importStatus === 'importing' || selectedCandidate?.candidate_id === candidate.candidate_id}
+                                      >
+                                        {selectedCandidate?.candidate_id === candidate.candidate_id ? (
+                                          importStatus === 'importing' ? (
+                                            <>
+                                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                              Importing...
+                                            </>
+                                          ) : importStatus === 'complete' ? (
+                                            'Imported'
+                                          ) : (
+                                            'Import'
+                                          )
                                         ) : (
                                           'Import'
-                                        )
-                                      ) : (
-                                        'Import'
-                                      )}
-                                    </Button>
+                                        )}
+                                      </Button>
+                                    )}
                                   </div>
                                 </CardContent>
                               </Card>

@@ -17,7 +17,9 @@ async def search(q):
                 "isbn": b["volumeInfo"].get("industryIdentifiers", [{}])[0].get("identifier", ""),
                 "download_available": False,  # Google Books rarely allows this
                 "download_url": None,
-                "ref": {"id": b["id"]}  # For re-fetch
+                "ref": {"id": b["id"]},
+                "web_reader_url": b["accessInfo"].get("webReaderLink"),
+                "viewability": b["accessInfo"]["viewability"],
             } for b in data
         ]
 
