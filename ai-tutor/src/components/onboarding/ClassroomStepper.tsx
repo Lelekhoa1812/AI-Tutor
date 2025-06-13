@@ -35,12 +35,12 @@ const classroomSchema = z.object({
   subject: z.string().min(1, 'Please select a subject'),
   gradeLevel: z.string().min(1, 'Please select a grade level'),
   textbook: z.object({
-    source: z.enum(['upload', 'online']),
+    source: z.enum(['upload', 'online']).optional(),
     documentId: z.string().optional(),
     file: z.any().optional()
   }).optional().nullable(),
   syllabus: z.object({
-    source: z.enum(['upload', 'online']),
+    source: z.enum(['upload', 'online']).optional(),
     documentId: z.string().optional(),
     file: z.any().optional()
   }).optional().nullable(),
@@ -85,6 +85,8 @@ export function ClassroomStepper() {
   const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGeneratingTimetable, setIsGeneratingTimetable] = useState(false)
+  const [timetableGenerated, setTimetableGenerated] = useState(false)
+  const [classroomId, setClassroomId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [candidates, setCandidates] = useState<Candidate[]>([])
@@ -92,6 +94,7 @@ export function ClassroomStepper() {
   const [previewOnlyCandidates, setPreviewOnlyCandidates] = useState<Record<string, string>>({})
   const [importStatus, setImportStatus] = useState<'idle' | 'importing' | 'complete'>('idle')
   const [wsConnection, setWsConnection] = useState<WebSocket | null>(null)
+  const [timetableData, setTimetableData] = useState<any>(null)
 
   const form = useForm<ClassroomFormData>({
     resolver: zodResolver(classroomSchema),
@@ -100,20 +103,43 @@ export function ClassroomStepper() {
       role: 'student',
       subject: '',
       gradeLevel: '',
-      textbook: null,
-      syllabus: null,
+      textbook: {
+        source: undefined,
+        documentId: undefined,
+        file: null
+      },
+      syllabus: {
+        source: undefined,
+        documentId: undefined,
+        file: null
+      },
       studyPreferences: {
         daysPerWeek: 3,
         numberWeekTotal: 12,
         hoursPerSession: 1,
         learningStyle: 'step-by-step'
       }
-    }
+    },
+    mode: 'onChange'
   })
+
+  // Add form state logging
+  useEffect(() => {
+    const subscription = form.watch((value) => {
+      console.log('Form values changed:', value)
+    })
+    return () => subscription.unsubscribe()
+  }, [form])
+
+  // Add form error logging
+  useEffect(() => {
+    console.log('Form errors:', form.formState.errors)
+  }, [form.formState.errors])
 
   // Enum steps
   const validateCurrentStep = async () => {
     const currentValues = form.getValues()
+    console.log('Validating step:', currentStep, 'with values:', currentValues)
     
     switch (currentStep) {
       case 1:
@@ -123,8 +149,13 @@ export function ClassroomStepper() {
         // No validation needed for step 2 as files are optional
         return true
       case 3:
-        // Validate study preferences
-        return form.trigger(['studyPreferences.daysPerWeek', 'studyPreferences.hoursPerSession', 'studyPreferences.learningStyle'])
+        // Validate all study preferences fields
+        return form.trigger([
+          'studyPreferences.daysPerWeek',
+          'studyPreferences.numberWeekTotal',
+          'studyPreferences.hoursPerSession',
+          'studyPreferences.learningStyle'
+        ])
       default:
         return false
     }
@@ -282,53 +313,28 @@ export function ClassroomStepper() {
     }
   }
 
-  const onSubmit = async (data: ClassroomFormData) => {
-    if (currentStep < 3) {
-      setCurrentStep(currentStep + 1)
-      return
-    }
+  // Generate a unique ID for the classroom
+  const generateClassroomId = (name: string) => {
+    const timestamp = Date.now()
+    const random = Math.random().toString(36).substring(2, 8)
+    return `${name.toLowerCase().replace(/\s+/g, '-')}-${timestamp}-${random}`
+  }
 
+  const generateTimetable = async (data: ClassroomFormData) => {
     try {
-      setIsSubmitting(true)
       setIsGeneratingTimetable(true)
-
-      // First, create the classroom in our database
-      const classroomResponse = await fetch('/api/classrooms', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          name: data.name,
-          role: data.role,
-          subject: data.subject,
-          gradeLevel: data.gradeLevel,
-          textbookUrl: data.textbook?.documentId || null,
-          syllabusUrl: data.syllabus?.documentId || null,
-          studyPreferences: data.studyPreferences
-        })
-      })
-
-      if (!classroomResponse.ok) {
-        const errorData = await classroomResponse.json()
-        throw new Error(errorData.error || 'Failed to create classroom')
-      }
-
-      const classroomResult = await classroomResponse.json()
-
-      toast({
-        title: "Success!",
-        description: "Classroom created successfully. Generating timetable...",
-      })
-
-      // Then, send data to the backend service for timetable generation
+      // Generate a unique ID for the classroom
+      const newClassroomId = generateClassroomId(data.name)
+      setClassroomId(newClassroomId)
+      
+      console.log('Generating timetable...')
       const timetableResponse = await fetch('https://binkhoale1812-tutorbot.hf.space/api/generate-timetable', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          id: classroomResult.classroomId,
+          id: data.name, // use name as temp-id, properly using newClassroomId 
           name: data.name,
           role: data.role,
           subject: data.subject,
@@ -344,33 +350,96 @@ export function ClassroomStepper() {
       }
 
       const timetableData = await timetableResponse.json()
+      console.log('Timetable generated:', timetableData)
+
+      // Parse the timetable_raw JSON string
+      const timetableJson = JSON.parse(timetableData.timetable_raw.replace(/```json\n|\n```/g, ''))
+      console.log('Parsed timetable:', timetableJson)
+
+      // Transform the data if needed
+      const transformedTimetable = timetableJson.timetable.map((session: any) => ({
+        week: session.week,
+        day: session.day,
+        durationHours: session.durationHours,
+        topic: session.topic,
+        activities: session.activities || [],
+        materials: session.materials || [],
+        homework: session.homework || ''
+      }))
+
+      setTimetableData(transformedTimetable)
+      setTimetableGenerated(true)
+      toast({
+        title: "Success!",
+        description: "Timetable generated successfully. You can now create the classroom.",
+      })
+    } catch (error) {
+      console.error('Error generating timetable:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to generate timetable",
+        variant: "destructive",
+      })
+    } finally {
+      setIsGeneratingTimetable(false)
+    }
+  }
+
+  const onSubmit = async (data: ClassroomFormData) => {
+    try {
+      setIsSubmitting(true)
+      console.log('Submitting form with data:', data)
+
+      // Create the classroom
+      const classroomResponse = await fetch('/api/classrooms', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data)
+      })
+
+      if (!classroomResponse.ok) {
+        const errorData = await classroomResponse.json()
+        throw new Error(errorData.error || 'Failed to create classroom')
+      }
+
+      const classroomResult = await classroomResponse.json()
+      console.log('Classroom created:', classroomResult)
+      const newClassroomId = classroomResult.classroomId
 
       // Save the timetable to our database
+      console.log('Saving timetable with data:', {
+        classroomId: newClassroomId,
+        timetable: timetableData
+      })
       const saveTimetableResponse = await fetch('/api/classrooms/timetable', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          classroomId: classroomResult.classroomId,
-          timetable: timetableData.timetable
+          classroomId: newClassroomId,
+          timetable: timetableData
         })
       })
 
       if (!saveTimetableResponse.ok) {
-        throw new Error('Failed to save timetable')
+        const errorData = await saveTimetableResponse.json()
+        console.error('Failed to save timetable:', errorData)
+        throw new Error(errorData.error || 'Failed to save timetable')
       }
 
       toast({
         title: "Success!",
-        description: "Timetable generated and saved successfully.",
+        description: "Classroom created and timetable saved successfully.",
       })
 
       // Close the dialog and refresh the classrooms list
       router.refresh()
       router.push('/onboarding?success=true')
     } catch (error) {
-      console.error('Error:', error)
+      console.error('Error in form submission:', error)
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to create classroom",
@@ -378,13 +447,14 @@ export function ClassroomStepper() {
       })
     } finally {
       setIsSubmitting(false)
-      setIsGeneratingTimetable(false)
     }
   }
 
   // Update the handleNext function
   const handleNext = async () => {
+    console.log('handleNext called, current step:', currentStep)
     const isValid = await validateCurrentStep()
+    console.log('Step validation result:', isValid)
     if (isValid) {
       setCurrentStep(currentStep + 1)
     }
@@ -392,7 +462,12 @@ export function ClassroomStepper() {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={(e) => {
+        e.preventDefault(); // Prevent form submission
+        if (timetableGenerated) {
+          onSubmit(form.getValues());
+        }
+      }} className="space-y-8">
         <div className="space-y-6">
           {/* Stepper Navigation */}
           <div className="flex justify-center">
@@ -538,17 +613,17 @@ export function ClassroomStepper() {
                   {/* File Upload Section */}
                   <Card>
                     <CardContent className="pt-6">
-                      <FormField
-                        control={form.control}
+                <FormField
+                  control={form.control}
                         name="textbook.file"
-                        render={({ field: { value, onChange, ...field } }) => (
-                          <FormItem>
+                  render={({ field: { value, onChange, ...field } }) => (
+                    <FormItem>
                             <FormLabel>Upload Local PDF</FormLabel>
-                            <FormControl>
+                      <FormControl>
                               <div className="flex items-center gap-2">
-                                <Input
-                                  type="file"
-                                  accept=".pdf"
+                        <Input
+                          type="file"
+                          accept=".pdf"
                                   onChange={(e) => {
                                     const file = e.target.files?.[0]
                                     if (file) {
@@ -559,8 +634,8 @@ export function ClassroomStepper() {
                                       })
                                     }
                                   }}
-                                  {...field}
-                                />
+                          {...field}
+                        />
                                 <Button
                                   variant="outline"
                                   size="icon"
@@ -584,11 +659,11 @@ export function ClassroomStepper() {
                                   <Upload className="h-4 w-4" />
                                 </Button>
                               </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                     </CardContent>
                   </Card>
 
@@ -675,17 +750,17 @@ export function ClassroomStepper() {
                 {/* Syllabus Section */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Syllabus</h3>
-                  <FormField
-                    control={form.control}
+                <FormField
+                  control={form.control}
                     name="syllabus.file"
-                    render={({ field: { value, onChange, ...field } }) => (
-                      <FormItem>
+                  render={({ field: { value, onChange, ...field } }) => (
+                    <FormItem>
                         <FormLabel>Upload Syllabus (Optional)</FormLabel>
-                        <FormControl>
+                      <FormControl>
                           <div className="flex items-center gap-2">
-                            <Input
-                              type="file"
-                              accept=".pdf"
+                        <Input
+                          type="file"
+                          accept=".pdf"
                               onChange={(e) => {
                                 const file = e.target.files?.[0]
                                 if (file) {
@@ -696,8 +771,8 @@ export function ClassroomStepper() {
                                   })
                                 }
                               }}
-                              {...field}
-                            />
+                          {...field}
+                        />
                             <Button
                               variant="outline"
                               size="icon"
@@ -721,11 +796,11 @@ export function ClassroomStepper() {
                               <Upload className="h-4 w-4" />
                             </Button>
                           </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 </div>
               </div>
             )}
@@ -838,16 +913,39 @@ export function ClassroomStepper() {
               Next
             </Button>
           ) : (
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  {isGeneratingTimetable ? 'Generating Timetable...' : 'Creating...'}
-                </div>
-              ) : (
-                'Create Classroom'
-              )}
-            </Button>
+            <div className="flex justify-end space-x-4">
+            {!timetableGenerated ? (
+              <Button
+                type="button"
+                onClick={() => generateTimetable(form.getValues())}
+                disabled={isGeneratingTimetable}
+              >
+                {isGeneratingTimetable ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Generating Timetable...
+                  </>
+                ) : (
+                  'Generate Timetable'
+                )}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                onClick={() => onSubmit(form.getValues())}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Classroom...
+                  </>
+                ) : (
+                  'Create Classroom'
+                )}
+              </Button>
+            )}
+          </div>
           )}
         </div>
       </form>

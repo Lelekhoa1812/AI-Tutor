@@ -11,9 +11,9 @@ const timetableSchema = z.object({
     day: z.number(),
     durationHours: z.number(),
     topic: z.string(),
-    activities: z.array(z.string()),
-    materials: z.array(z.string()),
-    homework: z.string()
+    activities: z.array(z.string()).optional().default([]),
+    materials: z.array(z.string()).optional().default([]),
+    homework: z.string().optional().default('')
   }))
 })
 
@@ -29,7 +29,11 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
+    console.log('Received timetable data:', JSON.stringify(body, null, 2))
+
+    // Validate the data
     const validatedData = timetableSchema.parse(body)
+    console.log('Validated timetable data:', JSON.stringify(validatedData, null, 2))
 
     // Verify that the classroom belongs to the user
     const classroom = await prisma.classroom.findFirst({
@@ -40,25 +44,37 @@ export async function POST(req: Request) {
     })
 
     if (!classroom) {
+      console.error('Classroom not found:', {
+        classroomId: validatedData.classroomId,
+        userId: session.user.id
+      })
       return NextResponse.json(
         { error: 'Classroom not found' },
         { status: 404 }
       )
     }
 
-    // Save the timetable
-    const timetable = await prisma.timetable.create({
-      data: {
-        classroomId: validatedData.classroomId,
-        schedule: validatedData.timetable
-      }
-    })
+    console.log('Found classroom:', JSON.stringify(classroom, null, 2))
 
-    return NextResponse.json(timetable)
+    // Save the timetable
+    try {
+      const timetable = await prisma.timetable.create({
+        data: {
+          classroomId: validatedData.classroomId,
+          schedule: validatedData.timetable as any
+        }
+      })
+      console.log('Created timetable:', JSON.stringify(timetable, null, 2))
+      return NextResponse.json(timetable)
+    } catch (dbError) {
+      console.error('Database error:', dbError)
+      throw dbError
+    }
   } catch (error) {
     console.error('Error saving timetable:', error)
     
     if (error instanceof z.ZodError) {
+      console.error('Validation error details:', error.errors)
       return NextResponse.json(
         { error: 'Validation error', details: error.errors },
         { status: 400 }
@@ -66,7 +82,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json(
-      { error: 'Failed to save timetable' },
+      { error: 'Failed to save timetable', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }

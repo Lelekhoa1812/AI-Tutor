@@ -84,11 +84,9 @@ model Classroom {
 
 model Timetable {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  classroomId String   @db.ObjectId
+  classroomId String   @unique @db.ObjectId
   classroom   Classroom @relation(fields: [classroomId], references: [id])
   schedule    Json
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  @@index([classroomId])
 }
