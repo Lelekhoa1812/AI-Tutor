@@ -13,41 +13,10 @@ const classroomSchema = z.object({
   syllabusUrl: z.string().nullable().optional(),
   studyPreferences: z.object({
     daysPerWeek: z.number().min(1).max(7),
-    numberWeekTotal: z.number().min(1).max(52),
     hoursPerSession: z.number().min(0.5).max(4),
     learningStyle: z.enum(['step-by-step', 'conceptual', 'visual'])
   })
 })
-
-export async function GET(req: Request) {
-  try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
-    const classrooms = await prisma.classroom.findMany({
-      where: {
-        userId: session.user.id
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    })
-
-    return NextResponse.json(classrooms)
-  } catch (error) {
-    console.error('Error fetching classrooms:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch classrooms' },
-      { status: 500 }
-    )
-  }
-}
 
 export async function POST(req: Request) {
   try {
@@ -61,13 +30,9 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
-    console.log('Received request body:', body)
-    
-    // Validate the request body
     const validatedData = classroomSchema.parse(body)
-    console.log('Validated data:', validatedData)
 
-    // Create the classroom with the validated data
+    // Create classroom in our database first
     const classroom = await prisma.classroom.create({
       data: {
         name: validatedData.name,
@@ -81,8 +46,42 @@ export async function POST(req: Request) {
       }
     })
 
-    console.log('Created classroom:', classroom)
-    return NextResponse.json({ classroomId: classroom.id })
+    // Send data to backend service
+    const backendResponse = await fetch('https://binkhoale1812-tutorbot.hf.space/api/generate-timetable', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        id: classroom.id,
+        name: classroom.name,
+        role: classroom.role,
+        subject: classroom.subject,
+        gradeLevel: classroom.gradeLevel,
+        textbookUrl: classroom.textbookUrl,
+        syllabusUrl: classroom.syllabusUrl,
+        studyPreferences: classroom.studyPreferences
+      })
+    })
+
+    if (!backendResponse.ok) {
+      throw new Error('Failed to generate timetable from backend service')
+    }
+
+    const timetableData = await backendResponse.json()
+
+    // Save timetable to database
+    await prisma.timetable.create({
+      data: {
+        classroomId: classroom.id,
+        schedule: timetableData.timetable
+      }
+    })
+
+    return NextResponse.json({ 
+      classroomId: classroom.id,
+      timetable: timetableData.timetable
+    })
   } catch (error) {
     console.error('Error creating classroom:', error)
     
@@ -93,15 +92,8 @@ export async function POST(req: Request) {
       )
     }
 
-    if (error instanceof Error) {
-      return NextResponse.json(
-        { error: error.message },
-        { status: 500 }
-      )
-    }
-
     return NextResponse.json(
-      { error: 'Failed to create classroom' },
+      { error: error instanceof Error ? error.message : 'Failed to create classroom' },
       { status: 500 }
     )
   }

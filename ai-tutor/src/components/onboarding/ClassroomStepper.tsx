@@ -46,6 +46,7 @@ const classroomSchema = z.object({
   }).optional().nullable(),
   studyPreferences: z.object({
     daysPerWeek: z.number().min(1).max(7),
+    numberWeekTotal: z.number().min(1).max(52),
     hoursPerSession: z.number().min(0.5).max(4),
     learningStyle: z.enum(['step-by-step', 'conceptual', 'visual'])
   })
@@ -83,6 +84,7 @@ export function ClassroomStepper() {
   const { toast } = useToast()
   const [currentStep, setCurrentStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isGeneratingTimetable, setIsGeneratingTimetable] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [candidates, setCandidates] = useState<Candidate[]>([])
@@ -102,6 +104,7 @@ export function ClassroomStepper() {
       syllabus: null,
       studyPreferences: {
         daysPerWeek: 3,
+        numberWeekTotal: 12,
         hoursPerSession: 1,
         learningStyle: 'step-by-step'
       }
@@ -285,41 +288,97 @@ export function ClassroomStepper() {
       return
     }
 
-    setIsSubmitting(true)
     try {
-      // Upload files if present
-      const [textbookUrl, syllabusUrl] = await Promise.all([
-        data.textbook?.file ? handleFileUpload(data.textbook.file, 'textbook') : null,
-        data.syllabus?.file ? handleFileUpload(data.syllabus.file, 'syllabus') : null
-      ])
+      setIsSubmitting(true)
+      setIsGeneratingTimetable(true)
 
-      // Create classroom
-      const response = await fetch('/api/classrooms', {
+      // First, create the classroom in our database
+      const classroomResponse = await fetch('/api/classrooms', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
-          ...data,
-          textbookUrl: data.textbook?.source === 'online' ? data.textbook.documentId : textbookUrl,
-          syllabusUrl: data.syllabus?.source === 'online' ? data.syllabus.documentId : syllabusUrl
+          name: data.name,
+          role: data.role,
+          subject: data.subject,
+          gradeLevel: data.gradeLevel,
+          textbookUrl: data.textbook?.documentId || null,
+          syllabusUrl: data.syllabus?.documentId || null,
+          studyPreferences: data.studyPreferences
         })
       })
 
-      if (!response.ok) throw new Error('Failed to create classroom')
+      if (!classroomResponse.ok) {
+        const errorData = await classroomResponse.json()
+        throw new Error(errorData.error || 'Failed to create classroom')
+      }
 
-      const { classroomId } = await response.json()
+      const classroomResult = await classroomResponse.json()
+
       toast({
-        title: 'Success',
-        description: 'Classroom created successfully!',
+        title: "Success!",
+        description: "Classroom created successfully. Generating timetable...",
       })
-      router.push(`/dashboard?classroomId=${classroomId}`)
-    } catch (error) {
+
+      // Then, send data to the backend service for timetable generation
+      const timetableResponse = await fetch('https://binkhoale1812-tutorbot.hf.space/api/generate-timetable', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          id: classroomResult.classroomId,
+          name: data.name,
+          role: data.role,
+          subject: data.subject,
+          gradeLevel: data.gradeLevel,
+          textbookUrl: data.textbook?.documentId || null,
+          syllabusUrl: data.syllabus?.documentId || null,
+          studyPreferences: data.studyPreferences
+        })
+      })
+
+      if (!timetableResponse.ok) {
+        throw new Error('Failed to generate timetable')
+      }
+
+      const timetableData = await timetableResponse.json()
+
+      // Save the timetable to our database
+      const saveTimetableResponse = await fetch('/api/classrooms/timetable', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          classroomId: classroomResult.classroomId,
+          timetable: timetableData.timetable
+        })
+      })
+
+      if (!saveTimetableResponse.ok) {
+        throw new Error('Failed to save timetable')
+      }
+
       toast({
-        title: 'Error',
-        description: 'Failed to create classroom. Please try again.',
-        variant: 'destructive'
+        title: "Success!",
+        description: "Timetable generated and saved successfully.",
+      })
+
+      // Close the dialog and refresh the classrooms list
+      router.refresh()
+      router.push('/onboarding?success=true')
+    } catch (error) {
+      console.error('Error:', error)
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to create classroom",
+        variant: "destructive",
       })
     } finally {
       setIsSubmitting(false)
+      setIsGeneratingTimetable(false)
     }
   }
 
@@ -695,6 +754,26 @@ export function ClassroomStepper() {
 
                 <FormField
                   control={form.control}
+                  name="studyPreferences.numberWeekTotal"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Total Number of Weeks</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={52}
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
                   name="studyPreferences.hoursPerSession"
                   render={({ field }) => (
                     <FormItem>
@@ -746,7 +825,7 @@ export function ClassroomStepper() {
             type="button"
             variant="outline"
             onClick={() => setCurrentStep(currentStep - 1)}
-            disabled={currentStep === 1}
+            disabled={currentStep === 1 || isSubmitting}
           >
             Previous
           </Button>
@@ -754,12 +833,20 @@ export function ClassroomStepper() {
             <Button
               type="button"
               onClick={handleNext}
+              disabled={isSubmitting}
             >
               Next
             </Button>
           ) : (
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating...' : 'Create Classroom'}
+              {isSubmitting ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {isGeneratingTimetable ? 'Generating Timetable...' : 'Creating...'}
+                </div>
+              ) : (
+                'Create Classroom'
+              )}
             </Button>
           )}
         </div>
