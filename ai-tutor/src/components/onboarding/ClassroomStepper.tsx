@@ -390,7 +390,7 @@ export function ClassroomStepper() {
       setIsSubmitting(true)
       console.log('Submitting form with data:', data)
 
-      // Create the classroom
+      // First, create the classroom
       const classroomResponse = await fetch('/api/classrooms', {
         method: 'POST',
         headers: {
@@ -406,11 +406,10 @@ export function ClassroomStepper() {
 
       const classroomResult = await classroomResponse.json()
       console.log('Classroom created:', classroomResult)
-      const newClassroomId = classroomResult.classroomId
 
       // Save the timetable to our database
       console.log('Saving timetable with data:', {
-        classroomId: newClassroomId,
+        classroomId: classroomResult.classroomId,
         timetable: timetableData
       })
       const saveTimetableResponse = await fetch('/api/classrooms/timetable', {
@@ -419,7 +418,7 @@ export function ClassroomStepper() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          classroomId: newClassroomId,
+          classroomId: classroomResult.classroomId,
           timetable: timetableData
         })
       })
@@ -435,9 +434,9 @@ export function ClassroomStepper() {
         description: "Classroom created and timetable saved successfully.",
       })
 
-      // Close the dialog and refresh the classrooms list
+      // Only close and redirect on complete success
       router.refresh()
-      router.push('/onboarding?success=true')
+      router.push(`/classrooms/${classroomResult.classroomId}?success=true`)
     } catch (error) {
       console.error('Error in form submission:', error)
       toast({
