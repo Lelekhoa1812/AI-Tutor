@@ -1,3 +1,4 @@
+// src/components/onboarding/ClassroomStepper.tsx
 'use client'
 
 import React, { useState, useEffect } from 'react'
@@ -34,6 +35,7 @@ const classroomSchema = z.object({
   role: z.enum(['tutor', 'student']),
   subject: z.string().min(1, 'Please select a subject'),
   gradeLevel: z.string().min(1, 'Please select a grade level'),
+  notice: z.string().optional().nullable(),
   textbook: z.object({
     source: z.enum(['upload', 'online']).optional(),
     documentId: z.string().optional(),
@@ -515,6 +517,24 @@ export function ClassroomStepper() {
                       <FormLabel>Classroom Name</FormLabel>
                       <FormControl>
                         <Input placeholder="Enter classroom name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="notice"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notice (Optional)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Add any special instructions or notices" 
+                          {...field} 
+                          value={field.value || ''}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

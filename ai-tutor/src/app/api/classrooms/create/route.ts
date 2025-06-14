@@ -9,6 +9,7 @@ const classroomSchema = z.object({
   role: z.enum(['tutor', 'student']),
   subject: z.string().min(1, 'Please select a subject'),
   gradeLevel: z.string().min(1, 'Please select a grade level'),
+  notice: z.string().optional().nullable(),
   textbookUrl: z.string().nullable().optional(),
   syllabusUrl: z.string().nullable().optional(),
   studyPreferences: z.object({
@@ -39,6 +40,7 @@ export async function POST(req: Request) {
         role: validatedData.role,
         subject: validatedData.subject,
         gradeLevel: validatedData.gradeLevel,
+        notice: validatedData.notice || null,
         textbookUrl: validatedData.textbookUrl || null,
         syllabusUrl: validatedData.syllabusUrl || null,
         studyPreferences: validatedData.studyPreferences,

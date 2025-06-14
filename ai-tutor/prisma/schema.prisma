@@ -72,13 +72,14 @@ model Classroom {
   gradeLevel       String
   textbookUrl      String?
   syllabusUrl      String?
+  notice           String?  // Optional notice field
   studyPreferences Json     // Contains: daysPerWeek, numberWeekTotal, hoursPerSession, learningStyle
   userId           String   @db.ObjectId
   user             User     @relation(fields: [userId], references: [id])
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   timetable        Timetable?
-  notes      Note[]         // One-to-many relation
+  notes            Note[]   // One-to-many relation
 
   @@index([userId])
 }
