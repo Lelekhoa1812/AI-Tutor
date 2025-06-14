@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ClassroomModal } from '@/components/classroom/ClassroomModal'
+import { BookOpen, Calendar, TrendingUp, ClipboardList, StickyNote, Link2 } from 'lucide-react'
 
 interface Classroom {
   id: string
@@ -11,6 +12,39 @@ interface Classroom {
   gradeLevel: string
   subject: string
 }
+
+const cardData = [
+  {
+    title: "Study Materials",
+    description: "Access your textbooks, notes, and resources.",
+    icon: <BookOpen className="h-10 w-10 text-blue-500" />,
+  },
+  {
+    title: "Schedule",
+    description: "View and manage your study timetable.",
+    icon: <Calendar className="h-10 w-10 text-green-500" />,
+  },
+  {
+    title: "Progress",
+    description: "Track your learning progress and achievements.",
+    icon: <TrendingUp className="h-10 w-10 text-purple-500" />,
+  },
+  {
+    title: "Assignments",
+    description: "Check and submit your assignments.",
+    icon: <ClipboardList className="h-10 w-10 text-orange-500" />,
+  },
+  {
+    title: "Notes",
+    description: "Review and organize your class notes.",
+    icon: <StickyNote className="h-10 w-10 text-yellow-500" />,
+  },
+  {
+    title: "Resources",
+    description: "Find additional learning materials.",
+    icon: <Link2 className="h-10 w-10 text-teal-500" />,
+  },
+]
 
 function DashboardContent() {
   const searchParams = useSearchParams()
@@ -71,60 +105,20 @@ function DashboardContent() {
       <h1 className="text-3xl font-bold text-center mb-8">Dashboard</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Content Cards */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Study Materials</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* Add study materials content */}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Schedule</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* Add schedule content */}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Progress</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* Add progress content */}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Assignments</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* Add assignments content */}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Notes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* Add notes content */}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Resources</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* Add resources content */}
-          </CardContent>
-        </Card>
+        {cardData.map((card) => (
+          <Card key={card.title} className="hover:shadow-lg transition-shadow">
+            <CardHeader className="flex flex-col items-center">
+              <div className="mb-2 rounded-full bg-muted bg-secondary p-3 flex items-center justify-center">
+                {card.icon}
+              </div>
+              <CardTitle className="text-center">{card.title}</CardTitle>
+              <p className="text-sm text-muted-foreground text-center mt-1">{card.description}</p>
+            </CardHeader>
+            <CardContent>
+              {/* Add card-specific content here */}
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {selectedClassroom && (
