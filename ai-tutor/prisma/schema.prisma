@@ -78,6 +78,7 @@ model Classroom {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   timetable        Timetable?
+  notes      Note[]         // One-to-many relation
 
   @@index([userId])
 }
@@ -85,8 +86,17 @@ model Classroom {
 model Timetable {
   id          String   @id @default(auto()) @map("_id") @db.ObjectId
   classroomId String   @unique @db.ObjectId
-  classroom   Classroom @relation(fields: [classroomId], references: [id])
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
   schedule    Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Note {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  classroomId String   @db.ObjectId
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  content     String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }

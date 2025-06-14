@@ -52,42 +52,45 @@ export function TimetableDisplay({ timetable }: TimetableDisplayProps) {
             </CardHeader>
             <CardContent>
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Day</TableHead>
-                    <TableHead>Duration</TableHead>
-                    <TableHead>Topic</TableHead>
-                    <TableHead>Activities</TableHead>
-                    <TableHead>Materials</TableHead>
-                    <TableHead>Homework</TableHead>
-                  </TableRow>
-                </TableHeader>
+              <TableHeader>
+                <TableRow className="hover:text-white transition-colors">
+                  <TableHead className="text-justify">Day</TableHead>
+                  <TableHead className="text-justify">Duration</TableHead>
+                  <TableHead className="text-justify">Topic</TableHead>
+                  <TableHead className="text-justify">Activities</TableHead>
+                  <TableHead className="text-justify">Materials</TableHead>
+                  <TableHead className="text-justify">Homework</TableHead>
+                </TableRow>
+              </TableHeader>
                 <TableBody>
                   {sessions.map((session) => (
-                    <TableRow key={`${session.week}-${session.day}`}>
-                      <TableCell>Day {session.day}</TableCell>
-                      <TableCell>{session.durationHours} hour(s)</TableCell>
-                      <TableCell className="font-medium">{session.topic}</TableCell>
-                      <TableCell>
+                    <TableRow
+                      key={`${session.week}-${session.day}`}
+                      className="group hover:bg-red-950 hover:text-white transition-colors"
+                    >
+                      <TableCell className="text-justify">Day {session.day}</TableCell>
+                      <TableCell className="text-justify">{session.durationHours} hour(s)</TableCell>
+                      <TableCell className="font-medium text-justify">{session.topic}</TableCell>
+                      <TableCell className="text-justify">
                         <div className="space-y-1">
                           {session.activities.map((activity, index) => (
-                            <Badge key={index} variant="secondary" className="mr-1 mb-1">
+                            <Badge key={index} variant="outline"   className="mr-1 mb-1 flex group-hover:text-white group-hover:border-white transition-colors">
                               {activity}
                             </Badge>
                           ))}
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-justify">
                         <div className="space-y-1">
                           {session.materials.map((material, index) => (
-                            <Badge key={index} variant="outline" className="mr-1 mb-1">
+                            <Badge key={index} variant="outline"  className="mr-1 mb-1 flex group-hover:text-white group-hover:border-white transition-colors">
                               {material}
                             </Badge>
                           ))}
                         </div>
                       </TableCell>
-                      <TableCell className="max-w-[200px]">
-                        <p className="text-sm text-muted-foreground">{session.homework}</p>
+                      <TableCell className="max-w-[200px] text-justify">
+                        <p className="text-sm text-muted-foreground group-hover:text-white transition-colors">{session.homework}</p>
                       </TableCell>
                     </TableRow>
                   ))}

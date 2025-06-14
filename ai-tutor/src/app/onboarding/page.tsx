@@ -46,7 +46,7 @@ export default function OnboardingPage() {
   }
 
   const handleClassroomClick = (classroom: Classroom) => {
-    setSelectedClassroom(classroom)
+    router.push(`/classrooms/${classroom.id}`)
   }
   
   // Rename Classroom

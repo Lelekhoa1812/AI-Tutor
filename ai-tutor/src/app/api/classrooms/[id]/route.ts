@@ -14,6 +14,14 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   }
 
   try {
+    // First, delete the timetable(s) associated with this classroom
+    await prisma.timetable.deleteMany({
+      where: {
+        classroomId: params.id
+      }
+    })
+
+    // Then, delete the classroom
     await prisma.classroom.delete({
       where: {
         id: params.id,

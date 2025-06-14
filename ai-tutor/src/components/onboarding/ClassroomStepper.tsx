@@ -942,7 +942,7 @@ export function ClassroomStepper() {
                 ) : (
                   'Create Classroom'
                 )}
-              </Button>
+            </Button>
             )}
           </div>
           )}

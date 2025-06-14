@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { TimetableDisplay } from "@/components/classroom/TimetableDisplay"
 import { Prisma } from "@prisma/client"
+import Link from "next/link";
 
 type ClassroomWithTimetable = Prisma.ClassroomGetPayload<{
   include: { timetable: true }
@@ -27,9 +28,9 @@ export default async function ClassroomPage({ params }: ClassroomPageProps) {
       userId: session.user.id,
     },
     include: {
-      timetable: true
+      timetable: true,
     },
-  }) as ClassroomWithTimetable | null
+  }) as ClassroomWithTimetable | null;
 
   if (!classroom) {
     return notFound()
@@ -46,6 +47,15 @@ export default async function ClassroomPage({ params }: ClassroomPageProps) {
           <p className="text-muted-foreground">No timetable available for this classroom.</p>
         </div>
       )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+        <Link href={`/classrooms/${classroom.id}/materials`}><button className="w-full p-6 border rounded-lg font-bold">Study Materials</button></Link>
+        <Link href={`/classrooms/timetable/${classroom.id}`}><button className="w-full p-6 border rounded-lg font-bold">Schedule</button></Link>
+        <Link href={`/classrooms/${classroom.id}/progress`}><button className="w-full p-6 border rounded-lg font-bold">Progress</button></Link>
+        <Link href={`/classrooms/${classroom.id}/assignments`}><button className="w-full p-6 border rounded-lg font-bold">Assignments</button></Link>
+        <Link href={`/classrooms/${classroom.id}/notes`}><button className="w-full p-6 border rounded-lg font-bold">Notes</button></Link>
+        <Link href={`/classrooms/${classroom.id}/resources`}><button className="w-full p-6 border rounded-lg font-bold">Resources</button></Link>
+      </div>
     </div>
   )
 } 
