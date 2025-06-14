@@ -1,3 +1,4 @@
+// src/components/chat/ChatBot.tsx
 'use client';
 
 import { useState, useRef } from 'react'
@@ -71,7 +72,6 @@ export function ChatBot() {
 
     setMessages(prev => [...prev, userMessage])
     setInput('')
-    setSelectedFile(null)
     setIsLoading(true)
 
     try {
@@ -81,7 +81,10 @@ export function ChatBot() {
       formData.append('level', level)
       formData.append('lang', 'EN')
       if (selectedFile) {
-        formData.append('file', selectedFile)
+        formData.append('image', selectedFile)
+      }
+      for (let pair of formData.entries()) {
+        console.log(pair[0]+ ':', pair[1])
       }
 
       const response = await fetch('https://binkhoale1812-tutorbot.hf.space/chat', {
@@ -92,12 +95,10 @@ export function ChatBot() {
       if (!response.ok) throw new Error('Failed to get response')
 
       const data = await response.json()
-      
       const assistantMessage: Message = {
         role: 'assistant',
         content: data.response
       }
-
       setMessages(prev => [...prev, assistantMessage])
     } catch (error) {
       console.error('Error:', error)
@@ -107,6 +108,10 @@ export function ChatBot() {
       }])
     } finally {
       setIsLoading(false)
+      setSelectedFile(null)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
     }
   }
 
