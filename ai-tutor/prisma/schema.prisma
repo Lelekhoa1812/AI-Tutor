@@ -93,10 +93,12 @@ model Timetable {
 }
 
 model Note {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  classroomId String   @db.ObjectId
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  classroomId String    @db.ObjectId
   classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  name        String    @default("Note")
   content     String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  color       String?   // e.g. "green", "pink", "yellow", etc.
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
