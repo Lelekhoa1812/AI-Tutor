@@ -1,3 +1,4 @@
+// src/components/ui/scroll-area.tsx
 "use client"
 
 import * as React from "react"
@@ -18,6 +19,7 @@ const ScrollArea = React.forwardRef<
       {children}
     </ScrollAreaPrimitive.Viewport>
     <ScrollBar />
+    <ScrollBar orientation="horizontal" />
     <ScrollAreaPrimitive.Corner />
   </ScrollAreaPrimitive.Root>
 ))

@@ -1,3 +1,4 @@
+// src/components/classroom/TimetableDisplay.tsx
 import React from 'react'
 import {
   Table,
@@ -51,51 +52,53 @@ export function TimetableDisplay({ timetable }: TimetableDisplayProps) {
               <CardDescription>Learning schedule for week {week}</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-              <TableHeader>
-                <TableRow className="hover:text-white transition-colors">
-                  <TableHead className="text-justify">Day</TableHead>
-                  <TableHead className="text-justify">Duration</TableHead>
-                  <TableHead className="text-justify">Topic</TableHead>
-                  <TableHead className="text-justify">Activities</TableHead>
-                  <TableHead className="text-justify">Materials</TableHead>
-                  <TableHead className="text-justify">Homework</TableHead>
-                </TableRow>
-              </TableHeader>
-                <TableBody>
-                  {sessions.map((session) => (
-                    <TableRow
-                      key={`${session.week}-${session.day}`}
-                      className="group hover:bg-red-950 hover:text-white transition-colors"
-                    >
-                      <TableCell className="text-justify">Day {session.day}</TableCell>
-                      <TableCell className="text-justify">{session.durationHours} hour(s)</TableCell>
-                      <TableCell className="font-medium text-justify">{session.topic}</TableCell>
-                      <TableCell className="text-justify">
-                        <div className="space-y-1">
-                          {session.activities.map((activity, index) => (
-                            <Badge key={index} variant="outline"   className="mr-1 mb-1 flex group-hover:text-white group-hover:border-white transition-colors">
-                              {activity}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-justify">
-                        <div className="space-y-1">
-                          {session.materials.map((material, index) => (
-                            <Badge key={index} variant="outline"  className="mr-1 mb-1 flex group-hover:text-white group-hover:border-white transition-colors">
-                              {material}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-[200px] text-justify">
-                        <p className="text-sm text-muted-foreground group-hover:text-white transition-colors">{session.homework}</p>
-                      </TableCell>
+              <div className="min-w-[800px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:text-white transition-colors">
+                      <TableHead className="min-w-[100px] text-justify">Day</TableHead>
+                      <TableHead className="min-w-[100px] text-justify">Duration</TableHead>
+                      <TableHead className="min-w-[200px] text-justify">Topic</TableHead>
+                      <TableHead className="min-w-[200px] text-justify">Activities</TableHead>
+                      <TableHead className="min-w-[200px] text-justify">Materials</TableHead>
+                      <TableHead className="min-w-[200px] text-justify">Homework</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {sessions.map((session) => (
+                      <TableRow
+                        key={`${session.week}-${session.day}`}
+                        className="group hover:bg-red-950 hover:text-white transition-colors"
+                      >
+                        <TableCell className="min-w-[100px] text-justify">Day {session.day}</TableCell>
+                        <TableCell className="min-w-[100px] text-justify">{session.durationHours} hour(s)</TableCell>
+                        <TableCell className="min-w-[200px] font-medium text-justify">{session.topic}</TableCell>
+                        <TableCell className="min-w-[200px] text-justify">
+                          <div className="space-y-1">
+                            {session.activities.map((activity, index) => (
+                              <Badge key={index} variant="outline" className="mr-1 mb-1 flex group-hover:text-white group-hover:border-white transition-colors">
+                                {activity}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="min-w-[200px] text-justify">
+                          <div className="space-y-1">
+                            {session.materials.map((material, index) => (
+                              <Badge key={index} variant="outline" className="mr-1 mb-1 flex group-hover:text-white group-hover:border-white transition-colors">
+                                {material}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell className="min-w-[200px] text-justify">
+                          <p className="text-sm text-muted-foreground group-hover:text-white transition-colors">{session.homework}</p>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         ))}

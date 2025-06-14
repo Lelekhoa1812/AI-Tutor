@@ -1,3 +1,4 @@
+// src/app/classrooms/timetable/[id]/page.tsx
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { TimetableDisplay } from "@/components/classroom/TimetableDisplay";
