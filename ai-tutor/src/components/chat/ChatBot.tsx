@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Send, Upload, X } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
+import remarkMath from 'remark-math'
+import rehypeKatex from 'rehype-katex'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -172,7 +174,12 @@ export function ChatBot() {
                     }`}
                   >
                     {message.role === 'assistant' ? (
-                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
                     ) : (
                       <>
                         {message.content}
