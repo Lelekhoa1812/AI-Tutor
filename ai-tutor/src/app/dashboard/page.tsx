@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ClassroomModal } from '@/components/classroom/ClassroomModal'
 import { BookOpen, Calendar, TrendingUp, ClipboardList, StickyNote, Link2 } from 'lucide-react'
@@ -18,35 +18,42 @@ const cardData = [
     title: "Study Materials",
     description: "Access your textbooks, notes, and resources.",
     icon: <BookOpen className="h-10 w-10 text-blue-500" />,
+    href: "/materials"
   },
   {
     title: "Schedule",
     description: "View and manage your study timetable.",
     icon: <Calendar className="h-10 w-10 text-green-500" />,
+    href: "/schedule"
   },
   {
     title: "Progress",
     description: "Track your learning progress and achievements.",
     icon: <TrendingUp className="h-10 w-10 text-purple-500" />,
+    href: "/progress"
   },
   {
     title: "Assignments",
     description: "Check and submit your assignments.",
     icon: <ClipboardList className="h-10 w-10 text-orange-500" />,
+    href: "/assignments"
   },
   {
     title: "Notes",
     description: "Review and organize your class notes.",
     icon: <StickyNote className="h-10 w-10 text-yellow-500" />,
+    href: "/notes"
   },
   {
     title: "Resources",
     description: "Find additional learning materials.",
     icon: <Link2 className="h-10 w-10 text-teal-500" />,
+    href: "/resources"
   },
 ]
 
 function DashboardContent() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [classrooms, setClassrooms] = useState<Classroom[]>([])
   const [selectedClassroom, setSelectedClassroom] = useState<Classroom | null>(null)
@@ -106,7 +113,11 @@ function DashboardContent() {
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {cardData.map((card) => (
-          <Card key={card.title} className="hover:shadow-lg transition-shadow">
+          <Card 
+            key={card.title} 
+            className="hover:shadow-lg transition-shadow cursor-pointer"
+            onClick={() => router.push(card.href)}
+          >
             <CardHeader className="flex flex-col items-center">
               <div className="mb-2 rounded-full bg-muted bg-secondary p-3 flex items-center justify-center">
                 {card.icon}

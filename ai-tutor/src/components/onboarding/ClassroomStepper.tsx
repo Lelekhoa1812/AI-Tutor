@@ -69,10 +69,10 @@ const subjects = [
 ]
 
 const gradeLevels = [
-  'Bachelor', 'Master', 'Doctorate',
+  'Self-study',
   'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5',
   'Grade 6', 'Grade 7', 'Grade 8', 'Grade 9', 'Grade 10',
-  'Grade 11', 'Grade 12', 'Tertiary'
+  'Grade 11', 'Grade 12', 'Tertiary', 'Postgraduate'
 ]
 
 const steps = [
@@ -377,9 +377,10 @@ export function ClassroomStepper() {
       })
     } catch (error) {
       console.error('Error generating timetable:', error)
+      // Provide user-friendly error message
       toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to generate timetable",
+        title: "Unable to Generate Timetable",
+        description: "We encountered an issue while creating your timetable. This is usually temporary - please try again.",
         variant: "destructive",
       })
     } finally {

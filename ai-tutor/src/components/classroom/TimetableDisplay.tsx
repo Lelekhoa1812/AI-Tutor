@@ -29,12 +29,44 @@ interface TimetableSession {
 }
 
 interface TimetableDisplayProps {
-  timetable: TimetableSession[]
+  timetable: TimetableSession[] | string | null
 }
 
 export function TimetableDisplay({ timetable }: TimetableDisplayProps) {
+  // Parse timetable if it's a string
+  let parsedTimetable: TimetableSession[] = []
+  
+  if (typeof timetable === 'string') {
+    try {
+      parsedTimetable = JSON.parse(timetable)
+    } catch (error) {
+      console.error('Failed to parse timetable:', error)
+      return (
+        <div className="p-4 text-center text-muted-foreground">
+          Failed to load timetable data
+        </div>
+      )
+    }
+  } else if (Array.isArray(timetable)) {
+    parsedTimetable = timetable
+  } else if (timetable === null) {
+    return (
+      <div className="p-4 text-center text-muted-foreground">
+        No timetable data available
+      </div>
+    )
+  }
+
+  if (!Array.isArray(parsedTimetable) || parsedTimetable.length === 0) {
+    return (
+      <div className="p-4 text-center text-muted-foreground">
+        No timetable sessions found
+      </div>
+    )
+  }
+
   // Group sessions by week
-  const sessionsByWeek = timetable.reduce((acc, session) => {
+  const sessionsByWeek = parsedTimetable.reduce((acc, session) => {
     if (!acc[session.week]) {
       acc[session.week] = []
     }
