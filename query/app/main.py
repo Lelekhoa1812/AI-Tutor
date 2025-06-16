@@ -18,6 +18,18 @@
 from fastapi import FastAPI, WebSocket
 from app.routers import search, import_doc
 
+# Debugger
+import logging
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s — %(name)s — %(levelname)s — %(message)s",
+    force=True
+)
+logger = logging.getLogger("book-query")
+logger.setLevel(logging.DEBUG)
+logger.info("🚀 Starting Tutor Book Querier...")
+
+
 app = FastAPI()
 
 app.include_router(search.router, prefix="/search")

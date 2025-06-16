@@ -24,7 +24,7 @@ interface Candidate {
   description?: string
   author?: string
   year?: number
-  source: 'google' | 'openlibrary' | 'ia'
+  source: 'google' | 'openlibrary' | 'ia' | 'gutenberg'
   ref: Record<string, any>
   previewUrl?: string
 }
@@ -174,16 +174,24 @@ export function ClassroomStepper() {
       const data = await response.json()
       // Map data to Candidate type
       setCandidates(
-        data.map((item: Candidate) => ({
-          candidate_id: item.candidate_id,
-          title: item.title,
-          author: item.author,
-          year: item.year,
-          description: `${item.author || ''} (${item.year || 'n/a'})`,
-          source: item.source,
-          ref: item.ref
-        }))
-      )   
+        data.map((item: any) => {
+          const previewUrl =
+            item.source === 'google'
+              ? `https://books.google.com/books/about?id=${item.ref?.id}&redir_esc=y`
+              : item.web_reader_url || null;
+          // Return url for preview (CHANGED on google source)
+          return {
+            candidate_id: item.candidate_id,
+            title: item.title,
+            author: item.author,
+            year: item.year,
+            description: `${item.author || ''} (${item.year || 'n/a'})`,
+            source: item.source,
+            ref: item.ref,
+            previewUrl
+          } as Candidate;
+        })
+      );      
       // Set preview links for candidates that are not downloadable
       const previewLinks = data.reduce((acc: Record<string, string>, item: any) => {
         if (!item.download_available && item.web_reader_url) {
@@ -725,11 +733,11 @@ export function ClassroomStepper() {
                                       {candidate.author} • {candidate.year} • Source: {candidate.source}
                                     </p>
                                     </div>
-                                    {previewOnlyCandidates[candidate.candidate_id] ? (
+                                    {candidate.previewUrl ? (
                                       <Button
                                         variant="link"
                                         className="text-blue-600"
-                                        onClick={() => window.open(previewOnlyCandidates[candidate.candidate_id], '_blank')}
+                                        onClick={() => window.open(candidate.previewUrl, '_blank')}
                                       >
                                         Preview
                                       </Button>

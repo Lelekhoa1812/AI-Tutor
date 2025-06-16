@@ -3,7 +3,7 @@ uvicorn[standard]
 gunicorn
 httpx
 motor
-gridfs
+# gridfs # Can be presented with pymongo
 tenacity
 aiofiles
 python-dotenv
