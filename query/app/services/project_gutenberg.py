@@ -18,14 +18,26 @@ async def search(q: str):
 
     results = []
     for b in books:
-        # Find a PDF format, ignore non-PDF rows
         pdf_link = next(
-            (v for k, v in b["formats"].items() if k.endswith("pdf")), None
+            (v for k, v in b["formats"].items() if k.lower().endswith("pdf")), None
         )
+        # Link not from public details
+        if not pdf_link:
+            try:
+                # Attempt fallback hardcoded PDF URL
+                fallback_url = f"https://www.gutenberg.org/files/{b['id']}/{b['id']}-pdf.pdf"
+                async with httpx.AsyncClient(timeout=5) as client:
+                    head_resp = await client.head(fallback_url)
+                    if head_resp.status_code == 200:
+                        pdf_link = fallback_url
+            # PDF not accessible from 
+            except Exception as e:
+                logger.debug(f"[GUT] fallback failed for {b['id']}: {e}")
+        # Fallback book not having preview/download url from both details and hardcode method
         if not pdf_link:
             logger.debug(f"[GUT] skipped (no PDF): {b['title']}")
             continue
-
+        # Final JSON
         results.append(
             {
                 "title": b["title"],

@@ -1,6 +1,6 @@
 # app/services/ingest.py
 import os
-import fitz  # PyMuPDF
+import fitz  # PyMuPDF - convert PDF to plaintext for semantic embedding
 import io
 from app.db import db, grid_fs_bucket
 from sentence_transformers import SentenceTransformer

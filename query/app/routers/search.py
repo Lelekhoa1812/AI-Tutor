@@ -17,10 +17,14 @@ def _tokenize(text: str):
     """lower-case & keep only alnum tokens"""
     return re.findall(r"[a-z0-9]+", text.lower())
 
+def normalize(text):
+    return re.sub(r'\s+', '', text.lower())
+
 def _title_matches(title: str, query_tokens: list[str]) -> bool:
-    title_lc = title.lower()
-    joined = "".join(query_tokens)  # “specialistmath” use-case
-    return all(tok in title_lc for tok in query_tokens) or joined in title_lc
+    """Check if all query tokens exist in title (unordered), or title contains all joined as a single word"""
+    title_norm = normalize(title)
+    joined_query = "".join(query_tokens)
+    return all(tok in title_norm for tok in query_tokens) or joined_query in title_norm
 
 @router.get("")
 async def search_books(q: str = Query(...)):
@@ -48,5 +52,5 @@ async def search_books(q: str = Query(...)):
     if dropped:
         logger.debug(f"🚮 truncated titles: {dropped[:10]}")
 
-    # Limit to 20 best matches
-    return merged[:20]
+    # Limit to 40 best matches
+    return merged[:40]

@@ -5,10 +5,13 @@
 # │   ├── routers/
 # │   │   ├── search.py
 # │   │   └── import_doc.py
-# │   └── services/
-# │       ├── google_books.py
-# │       ├── open_library.py
-# │       └── internet_archive.py
+# │   ├── services/
+# │   │   ├── google_books.py
+# │   │   ├── open_library.py
+# │   │   └── internet_archive.py
+# │   │   └── project_gutenberg.py
+# │   └── health/
+# │       └── check_status.py
 # ├── Dockerfile
 # ├── docker-compose.yml
 # └── README.md
@@ -17,6 +20,7 @@
 # app/main.py
 from fastapi import FastAPI, WebSocket
 from app.routers import search, import_doc
+from app.health import check_status
 
 # Debugger
 import logging
@@ -27,6 +31,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger("book-query")
 logger.setLevel(logging.DEBUG)
+# Silence noisy pymongo logs
+for noisy_module in ["pymongo", "pymongo.server_selection", "pymongo.topology", "pymongo.connection"]:
+    logging.getLogger(noisy_module).setLevel(logging.WARNING)
 logger.info("🚀 Starting Tutor Book Querier...")
 
 
@@ -34,6 +41,7 @@ app = FastAPI()
 
 app.include_router(search.router, prefix="/search")
 app.include_router(import_doc.router, prefix="/import")
+app.include_router(check_status.router, prefix="/health")
 
 @app.websocket("/ws/documents/{document_id}")
 async def websocket_endpoint(websocket: WebSocket, document_id: str):
