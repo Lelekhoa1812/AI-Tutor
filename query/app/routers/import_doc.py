@@ -1,7 +1,7 @@
 # app/routers/import.py
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from app.db import db, grid_fs_bucket
+from app.db import get_db, get_gridfs
 from app.services import google_books, open_library, internet_archive, project_gutenberg
 from app.services.ingest import parse_and_index
 import aiofiles, uuid, os
@@ -60,11 +60,13 @@ async def import_book(req: ImportRequest):
         logger.error(f"🚨 Failed to download or write PDF: {e}")
         raise HTTPException(500, "Failed to download PDF")
     
-    # Save to bucket
+    # Save to bucket using loop-safe GridFS
     try:
+        grid_fs_bucket = get_gridfs()
         with open(file_path, "rb") as f:
             await grid_fs_bucket.upload_from_stream(f"{req.candidate_id}.pdf", f)
         os.remove(file_path)
+
     except Exception as e:
         logger.error(f"💥 Failed to upload to GridFS: {e}")
         raise HTTPException(500, "Storage failed")
@@ -76,6 +78,7 @@ async def import_book(req: ImportRequest):
         "status": "queued",
         "metadata": result
     }
+    db = get_db()
     await db.documents.insert_one(doc)
     asyncio.create_task(parse_and_index(req.candidate_id))
     logger.info(f"📚 Document {req.candidate_id} queued for indexing")

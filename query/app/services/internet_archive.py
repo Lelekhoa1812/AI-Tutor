@@ -26,14 +26,21 @@ async def fetch(ref):
     identifier = ref.get("id")
     if not identifier:
         return None
+
     url = f"https://archive.org/metadata/{identifier}"
     async with httpx.AsyncClient(timeout=5) as client:
         res = await client.get(url)
         metadata = res.json()
         rights = metadata.get("metadata", {}).get("rights", "")
-        if "public" in rights.lower():
-            return {
-                "download_available": True,
-                "download_url": f"https://archive.org/download/{identifier}/{identifier}.pdf"
-            }
+        files = metadata.get("files", [])
+
+        # Prefer the actual PDF file name
+        for f in files:
+            if f.get("format", "").lower() == "pdf" and f.get("name", "").endswith(".pdf"):
+                return {
+                    "download_available": "public" in rights.lower(),
+                    "download_url": f"https://archive.org/download/{identifier}/{f['name']}"
+                }
+
     return {"download_available": False}
+

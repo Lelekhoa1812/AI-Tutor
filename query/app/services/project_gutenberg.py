@@ -56,19 +56,32 @@ async def search(q: str):
 
 # Fetch items
 async def fetch(ref: dict):
-    """For import: just return the same direct PDF link."""
+    """For import: return direct PDF link if available via Gutendex or fallback to Gutenberg."""
     gid = ref.get("id")
     if not gid:
         return None
-    url = f"https://gutendex.com/books/{gid}"
+    # Trailing to preview page for PDF confirmation
+    gutendex_url = f"https://gutendex.com/books/{gid}/"  # ensure trailing slash
+    try:
+        async with httpx.AsyncClient(timeout=10, follow_redirects=True) as client:
+            r = await client.get(gutendex_url)
+            if r.status_code == 200:
+                data = r.json()
+                pdf_link = next(
+                    (v for k, v in data["formats"].items() if k.lower().endswith("pdf")),
+                    None
+                )
+                if pdf_link:
+                    return {"download_available": True, "download_url": pdf_link}
+    except Exception as e:
+        logger.warning(f"[GUT] Gutendex metadata failed for {gid}: {e}")
+    # Fallback to static Gutenberg URL
+    fallback_url = f"https://www.gutenberg.org/files/{gid}/{gid}-pdf.pdf"
     async with httpx.AsyncClient(timeout=10) as client:
-        r = await client.get(url)
-        if r.status_code != 200:
-            return None
-        data = r.json()
-        pdf_link = next(
-            (v for k, v in data["formats"].items() if k.endswith("pdf")), None
-        )
-        if pdf_link:
-            return {"download_available": True, "download_url": pdf_link}
+        head = await client.head(fallback_url)
+        if head.status_code == 200:
+            logger.info(f"[GUT] Using fallback PDF: {fallback_url}")
+            return {"download_available": True, "download_url": fallback_url}
+    # Log
+    logger.warning(f"[GUT] No PDF for book {gid}")
     return None

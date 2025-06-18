@@ -723,51 +723,80 @@ export function ClassroomStepper() {
                         {/* Search Results wrapped in scrollable div */}
                         {candidates.length > 0 && (
                           <div className="space-y-2 max-h-64 overflow-y-auto border rounded-md p-2">
-                            {candidates.map((candidate) => (
-                              <Card key={candidate.candidate_id}>
-                                <CardContent className="p-4">
-                                  <div className="flex items-start justify-between">
-                                    <div>
-                                    <h4 className="font-medium">{candidate.title}</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                      {candidate.author} • {candidate.year} • Source: {candidate.source}
-                                    </p>
-                                    </div>
-                                    {candidate.previewUrl ? (
-                                      <Button
-                                        variant="link"
-                                        className="text-blue-600"
-                                        onClick={() => window.open(candidate.previewUrl, '_blank')}
-                                      >
-                                        Preview
-                                      </Button>
-                                    ) : (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => handleImport(candidate)}
-                                        disabled={importStatus === 'importing' || selectedCandidate?.candidate_id === candidate.candidate_id}
-                                      >
-                                        {selectedCandidate?.candidate_id === candidate.candidate_id ? (
-                                          importStatus === 'importing' ? (
-                                            <>
-                                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                              Importing...
-                                            </>
-                                          ) : importStatus === 'complete' ? (
-                                            'Imported'
+                            {candidates.map((candidate) => {
+                              // Format the metadata display consistently
+                              const formatMetadata = () => {
+                                const parts = []
+                                
+                                // Clean and format author
+                                if (candidate.author) {
+                                  // Remove extra parentheses and formatting from author
+                                  const cleanAuthor = candidate.author
+                                    .replace(/\([^)]*\)/g, '') // Remove parentheses content
+                                    .replace(/\s+/g, ' ') // Normalize whitespace
+                                    .trim()
+                                  if (cleanAuthor) {
+                                    parts.push(cleanAuthor)
+                                  }
+                                }
+                                
+                                // Add year if available
+                                if (candidate.year) {
+                                  parts.push(candidate.year.toString())
+                                }
+                                
+                                // Always add source
+                                parts.push(`Source: ${candidate.source}`)
+                                
+                                return parts.join(' • ')
+                              }
+
+                              return (
+                                <Card key={candidate.candidate_id}>
+                                  <CardContent className="p-4">
+                                    <div className="flex items-start justify-between">
+                                      <div>
+                                        <h4 className="font-medium">{candidate.title}</h4>
+                                        <p className="text-sm text-muted-foreground">
+                                          {formatMetadata()}
+                                        </p>
+                                      </div>
+                                      {candidate.previewUrl ? (
+                                        <Button
+                                          variant="link"
+                                          className="text-blue-600"
+                                          onClick={() => window.open(candidate.previewUrl, '_blank')}
+                                        >
+                                          Preview
+                                        </Button>
+                                      ) : (
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() => handleImport(candidate)}
+                                          disabled={importStatus === 'importing' || selectedCandidate?.candidate_id === candidate.candidate_id}
+                                        >
+                                          {selectedCandidate?.candidate_id === candidate.candidate_id ? (
+                                            importStatus === 'importing' ? (
+                                              <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Importing...
+                                              </>
+                                            ) : importStatus === 'complete' ? (
+                                              'Imported'
+                                            ) : (
+                                              'Import'
+                                            )
                                           ) : (
                                             'Import'
-                                          )
-                                        ) : (
-                                          'Import'
-                                        )}
-                                      </Button>
-                                    )}
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            ))}
+                                          )}
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              )
+                            })}
                           </div>
                         )}
                       </div>

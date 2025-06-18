@@ -5,6 +5,7 @@
 # │   ├── routers/
 # │   │   ├── search.py
 # │   │   └── import_doc.py
+# │   │   └── ws_progress.py
 # │   ├── services/
 # │   │   ├── google_books.py
 # │   │   ├── open_library.py
@@ -21,6 +22,7 @@
 from fastapi import FastAPI, WebSocket
 from app.routers import search, import_doc
 from app.health import check_status
+import app.config
 
 # Debugger
 import logging
@@ -36,7 +38,6 @@ for noisy_module in ["pymongo", "pymongo.server_selection", "pymongo.topology", 
     logging.getLogger(noisy_module).setLevel(logging.WARNING)
 logger.info("🚀 Starting Tutor Book Querier...")
 
-
 app = FastAPI()
 
 app.include_router(search.router, prefix="/search")
@@ -46,5 +47,5 @@ app.include_router(check_status.router, prefix="/health")
 @app.websocket("/ws/documents/{document_id}")
 async def websocket_endpoint(websocket: WebSocket, document_id: str):
     await websocket.accept()
-    from app.services.ws_progress import forward_progress
+    from app.routers.ws_progress import forward_progress
     await forward_progress(websocket, document_id)
