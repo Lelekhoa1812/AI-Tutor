@@ -17,6 +17,7 @@
 # ├── docker-compose.yml
 # └── README.md
 # https://binkhoale1812-querysearcher.hf.space/
+# https://binkhoale1812-querysearcher.hf.space/health
 
 # app/main.py
 from fastapi import FastAPI, WebSocket

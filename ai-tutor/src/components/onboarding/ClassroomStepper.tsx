@@ -37,12 +37,16 @@ const classroomSchema = z.object({
   gradeLevel: z.string().min(1, 'Please select a grade level'),
   notice: z.string().optional().nullable(),
   textbook: z.object({
-    source: z.enum(['upload', 'online']).optional(),
+    source: z.enum(['upload', 'online', 'google', 'openlibrary', 'ia', 'gutenberg']).optional(),
+    id: z.string().optional(),
+    name: z.string().optional(),
+    title: z.string().optional(),
     documentId: z.string().optional(),
+    uri: z.string().optional(),
     file: z.any().optional()
   }).optional().nullable(),
   syllabus: z.object({
-    source: z.enum(['upload', 'online']).optional(),
+    source: z.enum(['upload', 'online', 'google', 'openlibrary', 'ia', 'gutenberg']).optional(),
     documentId: z.string().optional(),
     file: z.any().optional()
   }).optional().nullable(),
@@ -212,82 +216,101 @@ export function ClassroomStepper() {
   }
 
   const handleImport = async (candidate: Candidate) => {
+    const docId = candidate.candidate_id;
     setSelectedCandidate(candidate)
     setImportStatus('importing')
+    console.log('[DEBUG] Importing document:', docId)
+    // Open WebSocket *immediately*
+    const ws = new WebSocket(`wss://binkhoale1812-querysearcher.hf.space/ws/documents/${docId}`);
+    setWsConnection(ws);
+    // Connect immediately to WebSocket
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log('[DEBUG] WebSocket message received:', data);
 
+      if (data.status === 'NOT_FOUND') {
+        toast({
+          title: 'Import Error',
+          description: 'The import job could not be found. Please try again.',
+          variant: 'destructive'
+        });
+        setImportStatus('idle');
+        setSelectedCandidate(null);
+        ws.close();
+        setWsConnection(null);
+        return;
+      }
+      // If import is ready, update form and state
+      if (data.status === 'READY') {
+        console.log('[DEBUG] Import complete, updating form and state');
+        console.log('[DEBUG] Textbook source (from candidate):', candidate.source);
+        setImportStatus('complete');
+        setSelectedCandidate(null);
+        ws.close();
+        setWsConnection(null);
+        // Update form with new document ID
+        form.setValue('textbook', {
+          source: candidate.source,
+          id: data.id,
+          title: data.title,
+          documentId: data.documentId,
+          uri: data.uri
+        });
+      }
+    };
+    
+    ws.onerror = () => {
+      toast({
+        title: 'Import Failed',
+        description: 'WebSocket error occurred.',
+        variant: 'destructive'
+      });
+      setImportStatus('idle');
+      ws.close();
+      setWsConnection(null);
+    };
+    // Then fire off the import request
     try {
       const response = await fetch('https://binkhoale1812-querysearcher.hf.space/import', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          candidate_id: candidate.candidate_id,
+          candidate_id: docId,
           title: candidate.title,
           source: candidate.source,
           ref: candidate.ref
         })
-      })
-
+      });
+      // If preview only, update form and state
       if (response.status === 403) {
-        // Preview fallback
-        const body = await response.json()
-        const webPreview = body?.previewUrl ?? candidate.ref?.webReaderLink ?? candidate.ref?.url
-        // Switch to preview mode (download not permitted)
+        const body = await response.json();
+        const webPreview = body?.previewUrl ?? candidate.ref?.webReaderLink ?? candidate.ref?.url;
         if (webPreview) {
           toast({
             title: 'Preview Only',
             description: 'This book is not available for download, but can be previewed online.',
-          })
-          setPreviewOnlyCandidates((prev) => ({
-            ...prev,
-            [candidate.candidate_id]: webPreview
-          }))
-          return
+          });
+          setPreviewOnlyCandidates((prev) => ({ ...prev, [docId]: webPreview }));
+          ws.close();
+          setWsConnection(null);
+          return;
         }
-        // If no preview available, throw error
-        throw new Error('Download not permitted and no preview available')
+        throw new Error('Download not permitted and no preview available');
       }
-
-      if (!response.ok) throw new Error('Import failed')
-      const { document_id } = await response.json()
-
-      // Connect to WebSocket for progress updates
-      const ws = new WebSocket(`wss://binkhoale1812-querysearcher.hf.space/ws/documents/${document_id}`)
-      setWsConnection(ws)
-      // On state change, update form with the imported document
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data)
-        if (data.status === 'READY') {
-          setImportStatus('complete')
-          ws.close()
-          setWsConnection(null)
-          // Update form with the imported document
-          form.setValue('textbook', {
-            source: 'online',
-            documentId: document_id
-          })
-        }
-      }
-      // Failed at import stage (likely embeedding)
-      ws.onerror = () => {
-        toast({
-          title: 'Import Failed',
-          description: 'Failed to import document. Please try again.',
-          variant: 'destructive'
-        })
-        setImportStatus('idle')
-        ws.close()
-        setWsConnection(null)
-      }
+      // If import failed, show error
+      if (!response.ok) throw new Error('Import failed');
     } catch (error) {
       toast({
         title: 'Import Failed',
         description: 'Failed to import document. Please try again.',
         variant: 'destructive'
-      })
-      setImportStatus('idle')
+      });
+      setImportStatus('idle');
+      ws.close();
+      setWsConnection(null);
     }
-  }
-
+  };
+  
   // Cleanup WebSocket connection on unmount
   useEffect(() => {
     return () => {
@@ -401,13 +424,21 @@ export function ClassroomStepper() {
       setIsSubmitting(true)
       console.log('Submitting form with data:', data)
 
+      // Prepare payload for backend
+      const payload = {
+        ...data,
+        textbook: data.textbook || null,
+        syllabus: data.syllabus || null,
+        timetable: timetableData || null
+      }
+
       // First, create the classroom
       const classroomResponse = await fetch('/api/classrooms', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify(payload)
       })
 
       if (!classroomResponse.ok) {
@@ -774,7 +805,7 @@ export function ClassroomStepper() {
                                           variant="outline"
                                           size="sm"
                                           onClick={() => handleImport(candidate)}
-                                          disabled={importStatus === 'importing' || selectedCandidate?.candidate_id === candidate.candidate_id}
+                                          disabled={importStatus === 'importing' && selectedCandidate?.candidate_id === candidate.candidate_id}
                                         >
                                           {selectedCandidate?.candidate_id === candidate.candidate_id ? (
                                             importStatus === 'importing' ? (
@@ -965,7 +996,7 @@ export function ClassroomStepper() {
             <Button
               type="button"
               onClick={handleNext}
-              disabled={isSubmitting}
+              disabled={isSubmitting || importStatus === 'importing'}
             >
               Next
             </Button>

@@ -72,15 +72,15 @@ model Classroom {
   gradeLevel       String
   textbookUrl      String?
   syllabusUrl      String?
-  notice           String?  // Optional notice field
-  studyPreferences Json     // Contains: daysPerWeek, numberWeekTotal, hoursPerSession, learningStyle
-  userId           String   @db.ObjectId
-  user             User     @relation(fields: [userId], references: [id])
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  notice           String?   // Optional notice field
+  studyPreferences Json      // Contains: daysPerWeek, numberWeekTotal, hoursPerSession, learningStyle
+  userId           String    @db.ObjectId
+  user             User      @relation(fields: [userId], references: [id])
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
   timetable        Timetable?
-  notes            Note[]   // One-to-many relation
-
+  notes            Note[]    // One-to-many relation
+  textbook         Textbook? // 1:1 link with cascade delete
   @@index([userId])
 }
 
@@ -102,4 +102,15 @@ model Note {
   color       String?   // e.g. "green", "pink", "yellow", etc.
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+}
+
+model Textbook {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  classroomId String    @unique @db.ObjectId
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  title       String?   @default("Textbook")
+  source      String?
+  documentId  String    // matches GridFS filename / embedding ID
+  uri         String    // access URL or GridFS info
+  uploadedAt  DateTime  @default(now())
 }

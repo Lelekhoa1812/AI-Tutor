@@ -10,8 +10,20 @@ const classroomSchema = z.object({
   subject: z.string().min(1, 'Please select a subject'),
   gradeLevel: z.string().min(1, 'Please select a grade level'),
   notice: z.string().optional().nullable(),
-  textbookUrl: z.string().nullable().optional(),
-  syllabusUrl: z.string().nullable().optional(),
+  textbook: z.object({
+    source: z.string().optional(),
+    id: z.string().optional(),
+    name: z.string().optional(),
+    title: z.string().optional(),
+    documentId: z.string().optional(),
+    uri: z.string().optional(),
+    file: z.any().optional()
+  }).optional().nullable(),
+  syllabus: z.object({
+    source: z.string().optional(),
+    documentId: z.string().optional(),
+    file: z.any().optional()
+  }).optional().nullable(),
   studyPreferences: z.object({
     daysPerWeek: z.number().min(1).max(7),
     numberWeekTotal: z.number().min(1).max(52),
@@ -76,12 +88,23 @@ export async function POST(req: Request) {
         subject: validatedData.subject,
         gradeLevel: validatedData.gradeLevel,
         notice: validatedData.notice || null,
-        textbookUrl: validatedData.textbookUrl || null,
-        syllabusUrl: validatedData.syllabusUrl || null,
         studyPreferences: validatedData.studyPreferences,
         userId: session.user.id
       }
     })
+
+    // If textbook metadata is provided, create a Textbook record and link it
+    if (validatedData.textbook && validatedData.textbook.documentId && validatedData.textbook.uri) {
+      await prisma.textbook.create({
+        data: {
+          classroomId: classroom.id,
+          title: validatedData.textbook.title || 'Textbook',
+          source: validatedData.textbook.source || '',
+          documentId: validatedData.textbook.documentId,
+          uri: validatedData.textbook.uri
+        }
+      })
+    }
 
     console.log('Created classroom:', classroom)
     return NextResponse.json({ classroomId: classroom.id })
