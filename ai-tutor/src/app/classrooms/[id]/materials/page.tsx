@@ -4,8 +4,8 @@ import { useParams } from "next/navigation";
 import { Document, Page, pdfjs } from "react-pdf";
 import { Button } from "@/components/ui/button";
 
-// Dynamically import the worker from local dependency
-pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.js`;
+// Configure PDF.js worker to use the version that matches react-pdf from a CDN
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@4.8.69/build/pdf.worker.min.mjs`;
 
 export default function ClassroomMaterialsPage() {
   const { id } = useParams();
