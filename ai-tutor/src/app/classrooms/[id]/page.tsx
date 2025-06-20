@@ -55,7 +55,7 @@ export default async function ClassroomPage({ params }: ClassroomPageProps) {
         <div className="flex flex-wrap justify-center gap-6">
           <Link href={`/classrooms/${classroom.id}/materials`}>
             <div className="flex flex-col items-center group">
-              <button className="rounded-full p-5 bg-white shadow hover:bg-primary/10 transition-colors" aria-label="Study Materials" title="Study Materials">
+              <button className="rounded-full p-5 shadow hover:bg-primary/10 transition-colors" aria-label="Study Materials" title="Study Materials">
                 <BookOpen className="h-10 w-10 group-hover:text-primary transition-colors" />
               </button>
               <span className="mt-2 text-sm font-medium text-center">Study Materials</span>
@@ -63,7 +63,7 @@ export default async function ClassroomPage({ params }: ClassroomPageProps) {
           </Link>
           <Link href={`/classrooms/timetable/${classroom.id}`}>
             <div className="flex flex-col items-center group">
-              <button className="rounded-full p-5 bg-white shadow hover:bg-primary/10 transition-colors" aria-label="Schedule" title="Schedule">
+              <button className="rounded-full p-5 shadow hover:bg-primary/10 transition-colors" aria-label="Schedule" title="Schedule">
                 <Calendar className="h-10 w-10 group-hover:text-primary transition-colors" />
               </button>
               <span className="mt-2 text-sm font-medium text-center">Schedule</span>
@@ -71,7 +71,7 @@ export default async function ClassroomPage({ params }: ClassroomPageProps) {
           </Link>
           <Link href={`/classrooms/${classroom.id}/progress`}>
             <div className="flex flex-col items-center group">
-              <button className="rounded-full p-5 bg-white shadow hover:bg-primary/10 transition-colors" aria-label="Progress" title="Progress">
+              <button className="rounded-full p-5 shadow hover:bg-primary/10 transition-colors" aria-label="Progress" title="Progress">
                 <TrendingUp className="h-10 w-10 group-hover:text-primary transition-colors" />
               </button>
               <span className="mt-2 text-sm font-medium text-center">Progress</span>
@@ -79,7 +79,7 @@ export default async function ClassroomPage({ params }: ClassroomPageProps) {
           </Link>
           <Link href={`/classrooms/${classroom.id}/assignments`}>
             <div className="flex flex-col items-center group">
-              <button className="rounded-full p-5 bg-white shadow hover:bg-primary/10 transition-colors" aria-label="Assignments" title="Assignments">
+              <button className="rounded-full p-5 shadow hover:bg-primary/10 transition-colors" aria-label="Assignments" title="Assignments">
                 <ClipboardList className="h-10 w-10 group-hover:text-primary transition-colors" />
               </button>
               <span className="mt-2 text-sm font-medium text-center">Assignments</span>
@@ -87,7 +87,7 @@ export default async function ClassroomPage({ params }: ClassroomPageProps) {
           </Link>
           <Link href={`/classrooms/${classroom.id}/notes`}>
             <div className="flex flex-col items-center group">
-              <button className="rounded-full p-5 bg-white shadow hover:bg-primary/10 transition-colors" aria-label="Notes" title="Notes">
+              <button className="rounded-full p-5 shadow hover:bg-primary/10 transition-colors" aria-label="Notes" title="Notes">
                 <StickyNote className="h-10 w-10 group-hover:text-primary transition-colors" />
               </button>
               <span className="mt-2 text-sm font-medium text-center">Notes</span>
@@ -95,7 +95,7 @@ export default async function ClassroomPage({ params }: ClassroomPageProps) {
           </Link>
           <Link href={`/classrooms/${classroom.id}/resources`}>
             <div className="flex flex-col items-center group">
-              <button className="rounded-full p-5 bg-white shadow hover:bg-primary/10 transition-colors" aria-label="Resources" title="Resources">
+              <button className="rounded-full p-5 shadow hover:bg-primary/10 transition-colors" aria-label="Resources" title="Resources">
                 <Link2 className="h-10 w-10 group-hover:text-primary transition-colors" />
               </button>
               <span className="mt-2 text-sm font-medium text-center">Resources</span>
