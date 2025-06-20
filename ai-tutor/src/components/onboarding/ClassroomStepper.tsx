@@ -47,7 +47,10 @@ const classroomSchema = z.object({
   }).optional().nullable(),
   syllabus: z.object({
     source: z.enum(['upload', 'online', 'google', 'openlibrary', 'ia', 'gutenberg']).optional(),
+    id: z.string().optional(),
+    title: z.string().optional(),
     documentId: z.string().optional(),
+    uri: z.string().optional(),
     file: z.any().optional()
   }).optional().nullable(),
   studyPreferences: z.object({
@@ -99,6 +102,7 @@ export function ClassroomStepper() {
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [previewOnlyCandidates, setPreviewOnlyCandidates] = useState<Record<string, string>>({})
   const [importStatus, setImportStatus] = useState<'idle' | 'importing' | 'complete'>('idle')
+  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'complete'>('idle')
   const [wsConnection, setWsConnection] = useState<WebSocket | null>(null)
   const [timetableData, setTimetableData] = useState<any>(null)
 
@@ -256,6 +260,11 @@ export function ClassroomStepper() {
           documentId: data.documentId,
           uri: data.uri
         });
+        
+        toast({
+          title: 'Import Complete',
+          description: 'Textbook imported successfully!',
+        });
       }
     };
     
@@ -322,27 +331,105 @@ export function ClassroomStepper() {
 
   const handleFileUpload = async (file: File | undefined, type: 'textbook' | 'syllabus') => {
     if (!file) return null
+    
+    // Generate a unique candidate_id for the upload
+    const candidate_id = `upload_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`
+    const title = file.name.replace(/\.[^/.]+$/, "") // Remove file extension
+    
+    setUploadStatus('uploading')
+    console.log('[DEBUG] Uploading file:', file.name, 'with candidate_id:', candidate_id)
+    
+    // Open WebSocket connection immediately
+    const ws = new WebSocket(`wss://binkhoale1812-querysearcher.hf.space/ws/documents/${candidate_id}`)
+    setWsConnection(ws)
+    
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data)
+      console.log('[DEBUG] WebSocket message received (upload):', data)
+      
+      if (data.status === 'NOT_FOUND') {
+        toast({
+          title: 'Upload Error',
+          description: 'The upload job could not be found. Please try again.',
+          variant: 'destructive'
+        })
+        setUploadStatus('idle')
+        ws.close()
+        setWsConnection(null)
+        return
+      }
+      
+      if (data.status === 'READY') {
+        console.log('[DEBUG] Upload complete, updating form and state')
+        setUploadStatus('complete')
+        ws.close()
+        setWsConnection(null)
+        
+        // Update form with uploaded document
+        if (type === 'textbook') {
+          form.setValue('textbook', {
+            source: 'upload',
+            id: data.id,
+            title: data.title,
+            documentId: data.documentId,
+            uri: data.uri
+          })
+        } else if (type === 'syllabus') {
+          form.setValue('syllabus', {
+            source: 'upload',
+            documentId: data.documentId,
+            uri: data.uri
+          })
+        }
+        
+        toast({
+          title: 'Upload Complete',
+          description: `${type === 'textbook' ? 'Textbook' : 'Syllabus'} uploaded successfully!`,
+        })
+      }
+    }
+    
+    ws.onerror = () => {
+      toast({
+        title: 'Upload Failed',
+        description: 'WebSocket error occurred during upload.',
+        variant: 'destructive'
+      })
+      setUploadStatus('idle')
+      ws.close()
+      setWsConnection(null)
+    }
+    
     try {
       const formData = new FormData()
       formData.append('file', file)
-      formData.append('type', type)
+      formData.append('title', title)
+      formData.append('candidate_id', candidate_id)
+      formData.append('source', 'manual')
 
-      const response = await fetch('/api/upload', {
+      const response = await fetch('https://binkhoale1812-querysearcher.hf.space/import/upload', {
         method: 'POST',
         body: formData
       })
 
-      if (!response.ok) throw new Error('Upload failed')
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('[DEBUG] Upload API error:', errorText)
+        throw new Error(`Upload failed: ${response.status}`)
+      }
       
-      const data = await response.json()
-      return data.url
+      console.log('[DEBUG] Upload request sent successfully')
+      
     } catch (error) {
+      console.error('[DEBUG] Error uploading file:', error)
       toast({
         title: 'Upload Failed',
         description: 'Failed to upload file. Please try again.',
         variant: 'destructive'
       })
-      return null
+      setUploadStatus('idle')
+      ws.close()
+      setWsConnection(null)
     }
   }
 
@@ -717,6 +804,25 @@ export function ClassroomStepper() {
                                 >
                                   <Upload className="h-4 w-4" />
                                 </Button>
+                                {form.getValues('textbook')?.file && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleFileUpload(form.getValues('textbook')?.file, 'textbook')}
+                                    disabled={uploadStatus === 'uploading'}
+                                  >
+                                    {uploadStatus === 'uploading' ? (
+                                      <>
+                                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        Uploading...
+                                      </>
+                                    ) : uploadStatus === 'complete' ? (
+                                      'Uploaded'
+                                    ) : (
+                                      'Upload'
+                                    )}
+                                  </Button>
+                                )}
                               </div>
                       </FormControl>
                       <FormMessage />
@@ -883,6 +989,25 @@ export function ClassroomStepper() {
                             >
                               <Upload className="h-4 w-4" />
                             </Button>
+                            {form.getValues('syllabus')?.file && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleFileUpload(form.getValues('syllabus')?.file, 'syllabus')}
+                                disabled={uploadStatus === 'uploading'}
+                              >
+                                {uploadStatus === 'uploading' ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Uploading...
+                                  </>
+                                ) : uploadStatus === 'complete' ? (
+                                  'Uploaded'
+                                ) : (
+                                  'Upload'
+                                )}
+                              </Button>
+                            )}
                           </div>
                       </FormControl>
                       <FormMessage />

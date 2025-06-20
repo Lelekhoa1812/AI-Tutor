@@ -20,7 +20,8 @@ class ImportRequest(BaseModel):
     source: str
     ref: dict
 
-# Embedding, query and PDF saver to buckets
+
+# Online stream: Embedding, query and PDF saver to buckets
 @router.post("")
 async def import_book(req: ImportRequest):
     logger.info(f"📥 Received import request: {req.dict()}")
@@ -103,6 +104,66 @@ async def import_book(req: ImportRequest):
         "source": req.source,
         "documentId": req.candidate_id,
         "uri": uri
+    }
+
+ 
+# File upload stream: Embedding, query and PDF saver to buckets
+from fastapi import UploadFile, File, Form
+@router.post("/upload")
+async def upload_book(
+    file: UploadFile = File(...),
+    title: str = Form(...),
+    candidate_id: str = Form(...),
+    source: str = Form("manual")  # Optional default source
+):
+    logger.info(f"📤 Received direct upload for: {candidate_id} ({title})")
+    db = get_db()
+    # Insert placeholder document first
+    placeholder_doc = {
+        "_id": candidate_id,
+        "title": title,
+        "status": "PENDING",
+        "metadata": {
+            "source": source,
+            "ref": {"upload": True}
+        }
+    }
+    await db.documents.replace_one({"_id": candidate_id}, placeholder_doc, upsert=True)
+    # Save uploaded file to temp
+    file_path = f"/tmp/{candidate_id}.pdf"
+    try:
+        async with aiofiles.open(file_path, 'wb') as out_file:
+            content = await file.read()
+            await out_file.write(content)
+        logger.info(f"✅ Uploaded PDF temporarily saved to {file_path}")
+    except Exception as e:
+        logger.error(f"🚨 Failed to save uploaded file: {e}")
+        raise HTTPException(500, "Failed to save uploaded PDF")
+    # Save to buckets
+    try:
+        grid_fs_bucket = get_gridfs()
+        with open(file_path, "rb") as f:
+            await grid_fs_bucket.upload_from_stream(f"{candidate_id}.pdf", f)
+        await save_to_textbook_fs(candidate_id, file_path)
+        os.remove(file_path)
+    except Exception as e:
+        logger.error(f"💥 Failed to upload to GridFS: {e}")
+        raise HTTPException(500, "Storage failed")
+    # Update metadata and trigger ingestion
+    await db.documents.update_one(
+        {"_id": candidate_id},
+        {"$set": {"status": "DOWNLOADING"}}
+    )
+    asyncio.create_task(parse_and_index(candidate_id))
+    logger.info(f"📚 Direct upload {candidate_id} queued for indexing")
+    # Final block
+    return {
+        "status": "QUEUED",
+        "id": candidate_id,
+        "title": title,
+        "source": source,
+        "documentId": candidate_id,
+        "uri": f"/import/textbook/{candidate_id}"
     }
 
 

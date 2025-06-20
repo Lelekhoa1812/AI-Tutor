@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 // Dynamically import the worker from local dependency
 pdfjs.GlobalWorkerOptions.workerSrc = `/pdf.worker.min.js`;
 
-export default function ClassroomResourcesPage() {
+export default function ClassroomMaterialsPage() {
   const { id } = useParams();
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [numPages, setNumPages] = useState<number>(0);
@@ -21,16 +21,16 @@ export default function ClassroomResourcesPage() {
     async function fetchDocumentId() {
       setLoading(true);
       setError(null);
-      console.log('[DEBUG] Fetching resources for classroom:', id);
+      console.log('[DEBUG] Fetching materials for classroom:', id);
       
       try {
-        const res = await fetch(`/api/classrooms/${id}/resources`);
+        const res = await fetch(`/api/classrooms/${id}/materials`);
         console.log('[DEBUG] API response status:', res.status);
         
         if (!res.ok) {
           const errorText = await res.text();
           console.error('[DEBUG] API error:', errorText);
-          throw new Error(`Failed to fetch classroom resources: ${res.status}`);
+          throw new Error(`Failed to fetch classroom materials: ${res.status}`);
         }
         
         const data = await res.json();
@@ -46,7 +46,7 @@ export default function ClassroomResourcesPage() {
         setPdfUrl(pdfUrl);
         
       } catch (err: any) {
-        console.error('[DEBUG] Error fetching resources:', err);
+        console.error('[DEBUG] Error fetching materials:', err);
         setError(err.message || "Unknown error");
       } finally {
         setLoading(false);
@@ -78,7 +78,7 @@ export default function ClassroomResourcesPage() {
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4">
-      <h1 className="text-2xl font-bold mb-6">Classroom Resources</h1>
+      <h1 className="text-2xl font-bold mb-6">Classroom Materials</h1>
       
       {loading && (
         <div className="text-center py-8">

@@ -4,6 +4,7 @@ gunicorn
 httpx
 motor
 # gridfs # Can be presented with pymongo
+python-multipart
 tenacity
 aiofiles
 python-dotenv
