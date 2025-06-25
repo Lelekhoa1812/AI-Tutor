@@ -81,6 +81,7 @@ model Classroom {
   timetable        Timetable?
   notes            Note[]    // One-to-many relation
   textbook         Textbook? // 1:1 link with cascade delete
+  resources        Resource[] // One-to-many relation
   @@index([userId])
 }
 
@@ -113,4 +114,20 @@ model Textbook {
   documentId  String    // matches GridFS filename / embedding ID
   uri         String    // access URL or GridFS info
   uploadedAt  DateTime  @default(now())
+}
+
+model Resource {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  classroomId String    @db.ObjectId
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  topic       String
+  type        String    // "video" or "website"
+  url         String
+  title       String?
+  description String?
+  thumbnail   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([classroomId])
 }
