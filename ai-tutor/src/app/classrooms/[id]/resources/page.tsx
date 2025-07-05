@@ -176,7 +176,7 @@ export default function ResourcesPage() {
           <TabsContent value="topics" className="space-y-6">
             {Object.entries(groupedResources).map(([topic, topicResources]) => (
               <div key={topic} className="space-y-3">
-                <h3 className="text-xl font-semibold text-gray-800 border-b pb-2">
+                <h3 className="text-xl font-semibold border-b pb-2">
                   {topic}
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
